@@ -18,6 +18,9 @@ Copy this file to `WORKSPACE.md` in your project root. LingCode loads it when us
 
 ## Deployment
 
+sfdsfsafa
+
+test
 - Target: Docker (Local)
 - Environment: production
 - Branch: main
