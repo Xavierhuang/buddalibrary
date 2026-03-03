@@ -29,10 +29,10 @@ struct BookmarksView: View {
                         Image(systemName: "bookmark")
                             .font(.system(size: 60))
                             .foregroundColor(.secondary)
-                        Text("No bookmarks yet")
+                        Text(NSLocalizedString("No bookmarks yet", comment: ""))
                             .font(.headline)
                             .foregroundColor(.secondary)
-                        Text("Bookmark chapters while reading to access them quickly")
+                        Text(NSLocalizedString("Bookmark chapters while reading to access them quickly", comment: ""))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -80,7 +80,7 @@ struct BookmarkRow: View {
                 Text(bookmark.textTitle)
                     .font(.headline)
                 
-                Text("Chapter \(bookmark.chapterNumber)" + (bookmark.verseNumber != nil ? ", Verse \(bookmark.verseNumber!)" : ""))
+                Text(String(format: NSLocalizedString("Chapter %d", comment: ""), bookmark.chapterNumber) + (bookmark.verseNumber != nil ? ", " + String(format: NSLocalizedString("Verse %d", comment: ""), bookmark.verseNumber!) : ""))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 

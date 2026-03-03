@@ -31,10 +31,10 @@ struct NotesView: View {
                         Image(systemName: "note.text")
                             .font(.system(size: 60))
                             .foregroundColor(.secondary)
-                        Text("No notes yet")
+                        Text(NSLocalizedString("No notes yet", comment: ""))
                             .font(.headline)
                             .foregroundColor(.secondary)
-                        Text("Long press on a verse while reading to add a note")
+                        Text(NSLocalizedString("Long press on a verse while reading to add a note", comment: ""))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -88,7 +88,7 @@ struct NoteRow: View {
                     .foregroundColor(.secondary)
             }
             
-            Text("Chapter \(note.chapterNumber)" + (note.verseNumber != nil ? ", Verse \(note.verseNumber!)" : ""))
+            Text(String(format: NSLocalizedString("Chapter %d", comment: ""), note.chapterNumber) + (note.verseNumber != nil ? ", " + String(format: NSLocalizedString("Verse %d", comment: ""), note.verseNumber!) : ""))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
@@ -127,20 +127,23 @@ struct NoteDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // Verse reference
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(note.textTitle)
-                            .font(.headline)
-                        Text("Chapter \(note.chapterNumber)" + (note.verseNumber != nil ? ", Verse \(note.verseNumber!)" : ""))
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text(note.text)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
+                    NavigationLink(destination: ReadingView(textTitle: note.textTitle, chapterNumber: note.chapterNumber)) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(note.textTitle)
+                                .font(.headline)
+                            Text(String(format: NSLocalizedString("Chapter %d", comment: ""), note.chapterNumber) + (note.verseNumber != nil ? ", " + String(format: NSLocalizedString("Verse %d", comment: ""), note.verseNumber!) : ""))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Text(note.text)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                        }
+                        .padding()
                     }
-                    .padding()
+                    .buttonStyle(PlainButtonStyle())
                     
                     // Note content
                     if isEditing {
@@ -163,12 +166,18 @@ struct NoteDetailView: View {
                     
                     // Metadata
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Created: \(note.createdAt, style: .date)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("Updated: \(note.updatedAt, style: .date)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text(NSLocalizedString("Created:", comment: ""))
+                            Text(note.createdAt, style: .date)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        HStack {
+                            Text(NSLocalizedString("Updated:", comment: ""))
+                            Text(note.updatedAt, style: .date)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     }
                     .padding(.horizontal)
                 }

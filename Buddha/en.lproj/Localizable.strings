@@ -1,0 +1,97 @@
+/* 
+  Localizable.strings
+  Buddha
+  
+  English Localization
+*/
+
+// Navigation & Titles
+"Library" = "Library";
+"Home" = "Home";
+"Notes" = "Notes";
+"Audio" = "Audio";
+"Search" = "Search";
+"Reading Settings" = "Reading Settings";
+"Done" = "Done";
+"Settings" = "Settings";
+"About" = "About";
+"Chapters" = "Chapters";
+
+// Reading View
+"Chapter" = "Chapter";
+"Ch." = "Ch.";
+"Next" = "Next";
+"Chapter not found" = "Chapter not found";
+"Looking for: Chapter %d" = "Looking for: Chapter %d";
+"Available chapters: %@" = "Available chapters: %@";
+"Verse %d of %d" = "Verse %d of %d";
+
+// Settings
+"Text Size" = "Text Size";
+"Current size: %dpt" = "Current size: %dpt";
+"Appearance" = "Appearance";
+"Dark Mode" = "Dark Mode";
+"Translation" = "Translation";
+"Show English Translation" = "Show English Translation";
+
+// Library
+"All" = "All";
+"Search texts..." = "Search texts...";
+"%d chapters" = "%d chapters";
+"chapters" = "chapters";
+"Author:" = "Author:";
+"Open PDF" = "Open PDF";
+"View the complete book" = "View the complete book";
+"%d verses" = "%d verses";
+
+// Home
+"Daily Verse" = "Daily Verse";
+"Texts" = "Texts";
+"Notes" = "Notes";
+"Bookmarks" = "Bookmarks";
+"Highlights" = "Highlights";
+"Recent Reading" = "Recent Reading";
+"Continue Reading" = "Continue Reading";
+"Recent Bookmarks" = "Recent Bookmarks";
+"Recent Highlights" = "Recent Highlights";
+"See All" = "See All";
+"No notes yet" = "No notes yet";
+"Long press on a verse while reading to add a note" = "Long press on a verse while reading to add a note";
+"Search notes..." = "Search notes...";
+"No bookmarks yet" = "No bookmarks yet";
+"Bookmark chapters while reading to access them quickly" = "Bookmark chapters while reading to access them quickly";
+"Search bookmarks..." = "Search bookmarks...";
+"No highlights yet" = "No highlights yet";
+"Long press on a verse while reading to add a highlight" = "Long press on a verse while reading to add a highlight";
+"Search highlights..." = "Search highlights...";
+"Note" = "Note";
+"Created:" = "Created:";
+"Updated:" = "Updated:";
+"Verse %d" = "Verse %d";
+
+// Notes & Bookmarks
+"Add Note" = "Add Note";
+"Edit Note" = "Edit Note";
+"Save" = "Save";
+"Cancel" = "Cancel";
+"Delete" = "Delete";
+
+// Search
+"Search" = "Search";
+"Search Buddhist Texts" = "Search Buddhist Texts";
+"Enter a word or phrase to search across all texts" = "Enter a word or phrase to search across all texts";
+"No results found" = "No results found";
+"Try different keywords" = "Try different keywords";
+"Search verses..." = "Search verses...";
+"Ch. %d, V. %d" = "Ch. %d, V. %d";
+
+// Audio
+"Play" = "Play";
+"Pause" = "Pause";
+"Stop" = "Stop";
+
+// Categories
+"Sutra" = "Sutra";
+"Teaching" = "Teaching";
+"Liturgy" = "Liturgy";
+

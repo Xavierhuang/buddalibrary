@@ -15,15 +15,17 @@ final class BuddhistText {
     var author: String?
     var textDescription: String?
     var category: String // e.g., "Sutra", "Teaching", "Commentary"
+    var coverImageName: String? // Asset name for cover image
     @Relationship(deleteRule: .cascade) var chapters: [Chapter] = []
     var createdAt: Date
-    
-    init(title: String, author: String? = nil, textDescription: String? = nil, category: String = "Sutra") {
+
+    init(title: String, author: String? = nil, textDescription: String? = nil, category: String = "Sutra", coverImageName: String? = nil) {
         self.id = UUID()
         self.title = title
         self.author = author
         self.textDescription = textDescription
         self.category = category
+        self.coverImageName = coverImageName
         self.createdAt = Date()
     }
 }

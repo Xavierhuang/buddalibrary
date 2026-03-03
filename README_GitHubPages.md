@@ -105,3 +105,12 @@ buddha-app/
 - GitHub Pages documentation: https://docs.github.com/en/pages
 - Contact GitHub support if issues persist
 
+
+
+
+
+
+
+
+
+

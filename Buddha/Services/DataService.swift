@@ -8,9 +8,7 @@
 import Foundation
 import SwiftData
 
-// MARK: - DataService
 class DataService {
-    // MARK: - Load Sample Data
     static func loadSampleData(context: ModelContext) {
         // Check if data already exists
         let descriptor = FetchDescriptor<BuddhistText>()
@@ -19,25 +17,81 @@ class DataService {
         // Check which texts already exist
         let existingTitles = Set(existingTexts.map { $0.title })
         
-        // Only load texts that don't exist yet
-        let shouldLoadHeartSutra = !existingTitles.contains("Heart Sutra") && !existingTitles.contains("Heart Sutra (心經)")
-        let shouldLoadDiamondSutra = !existingTitles.contains("Diamond Sutra")
-        let shouldLoadFourNobleTruths = !existingTitles.contains("The Four Noble Truths")
-        let shouldLoadEightfoldPath = !existingTitles.contains("The Noble Eightfold Path")
-        let shouldLoadWaterRepentance = !existingTitles.contains("Samadhi Water Repentance")
+        // Check if Samadhi Water Repentance exists but has incomplete data
+        // Expected: 6 chapters with 466 total verses
+        let waterRepentanceText = existingTexts.first { $0.title == "Samadhi Water Repentance" || $0.title == "Samadhi Water Repentance (慈悲三昧水懺科儀)" }
+        var shouldReloadWaterRepentance = false
+        if let text = waterRepentanceText {
+            let totalVerses = text.chapters.reduce(0) { $0 + $1.verses.count }
+            shouldReloadWaterRepentance = totalVerses < 400 // If less than 400 verses, reload it
+        }
         
+        // If we need to reload, delete the existing text first
+        if shouldReloadWaterRepentance, let text = waterRepentanceText {
+            context.delete(text)
+            try? context.save()
+        }
+        
+        // Delete old "Samadhi Water Repentance" if it exists without Chinese title, so it can be reloaded with Chinese title
+        if let oldWaterRepentance = existingTexts.first(where: { $0.title == "Samadhi Water Repentance" }) {
+            context.delete(oldWaterRepentance)
+            try? context.save()
+        }
+        
+        // Delete "The Noble Eightfold Path" if it exists (no longer needed)
+        if let eightfoldPathText = existingTexts.first(where: { $0.title == "The Noble Eightfold Path" }) {
+            context.delete(eightfoldPathText)
+            try? context.save()
+        }
+        
+        // Delete "The Four Noble Truths" if it exists (no longer needed)
+        if let fourNobleTruthsText = existingTexts.first(where: { $0.title == "The Four Noble Truths" }) {
+            context.delete(fourNobleTruthsText)
+            try? context.save()
+        }
+        
+        // Delete old "Heart Sutra" if it exists without Chinese title, so it can be reloaded with Chinese title
+        if let oldHeartSutra = existingTexts.first(where: { $0.title == "Heart Sutra" }) {
+            context.delete(oldHeartSutra)
+            try? context.save()
+        }
+        
+        // Only load texts that don't exist yet
+        let shouldLoadHeartSutra = !existingTitles.contains("Heart Sutra (心經)")
+        let shouldLoadDiamondSutra = !existingTitles.contains("Diamond Sutra") && !existingTitles.contains("Diamond Sutra (金剛般若波羅蜜經)")
+        let shouldLoadWaterRepentance = (!existingTitles.contains("Samadhi Water Repentance (慈悲三昧水懺科儀)") && !existingTitles.contains("Samadhi Water Repentance")) || shouldReloadWaterRepentance
+        // Delete old "Great Compassion Repentance" if it exists without Chinese title, so it can be reloaded with Chinese title
+        if let oldGreatCompassionRepentance = existingTexts.first(where: { $0.title == "Great Compassion Repentance" }) {
+            context.delete(oldGreatCompassionRepentance)
+            try? context.save()
+        }
+        
+        let shouldLoadGreatCompassionRepentance = !existingTitles.contains("Great Compassion Repentance (大悲咒)")
+        let shouldLoadMedicineBuddhaSutra = !existingTitles.contains("Medicine Buddha Sutra") && !existingTitles.contains("Medicine Buddha Sutra (藥師琉璃光如來本願功德經)")
+        // Check for old Universal Gate title and delete if exists
+        if let oldUniversalGate = existingTexts.first(where: { $0.title == "The Lotus Sutra's Universal Gate Chapter" }) {
+            context.delete(oldUniversalGate)
+            try? context.save()
+        }
+        
+        let shouldLoadLotusSutraUniversalGate = !existingTitles.contains("The Universal Gateway of Guanyin Bodhisattva (普門品)") && !existingTitles.contains("The Lotus Sutra's Universal Gate Chapter")
+        let shouldLoadWhatBuddhaTaught = !existingTitles.contains("What the Buddha Taught")
+        let shouldLoadLifeOfBuddha = !existingTitles.contains("The Life of the Buddha")
+        let shouldLoadSiddhartha = !existingTitles.contains("流浪者之歌 (Siddhartha)")
+
         // If all texts exist, return early
-        if !shouldLoadHeartSutra && !shouldLoadDiamondSutra && !shouldLoadFourNobleTruths && !shouldLoadEightfoldPath && !shouldLoadWaterRepentance {
+        if !shouldLoadHeartSutra && !shouldLoadDiamondSutra && !shouldLoadWaterRepentance && !shouldLoadGreatCompassionRepentance && !shouldLoadMedicineBuddhaSutra && !shouldLoadLotusSutraUniversalGate && !shouldLoadWhatBuddhaTaught && !shouldLoadLifeOfBuddha && !shouldLoadSiddhartha {
             return
         }
         
-        // MARK: - Heart Sutra
+        // Heart Sutra
         if shouldLoadHeartSutra {
         let heartSutra = BuddhistText(
             title: "Heart Sutra (心經)",
             author: "Buddha",
             textDescription: "The Heart of Perfect Wisdom Sutra",
-            category: "Sutra"
+            category: "Sutra",
+            coverImageName: "HeartSutra"
         )
         
         let heartChapter1 = Chapter(number: 1, title: "The Heart of Perfect Wisdom")
@@ -46,92 +100,92 @@ class DataService {
             Verse(
                 number: 1,
                 text: "Avalokiteshvara, the Bodhisattva of Compassion, meditating deeply on Perfection of Wisdom, saw clearly that the five aspects of human existence are empty, and so released himself from suffering.",
-                pinyin: "guān zì zài pú sà, xíng shēn bō rě bō luó mì duō shí, zhào jiàn wǔ yùn jiē kōng, dù yí qiè kǔ è",
-                chinese: "觀自在菩薩，行深般若波羅蜜多時，照見五蘊皆空，度一切苦厄"
+                pinyin: "guān zì zài pú sà xíng shēn bō rě bō luó mì duō shí zhào jiàn wǔ yùn jiē kōng dù yī qiè kǔ è",
+                chinese: "觀自在菩薩，行深般若波羅蜜多時，照見五蘊皆空，度一切苦厄。"
             ),
             Verse(
                 number: 2,
                 text: "Answering the monk Sariputra, he said this:",
-                pinyin: "shè lì zǐ",
-                chinese: "舍利子"
+                pinyin: "shě lì zǐ sè bù yì kōng kōng bù yì sè",
+                chinese: "舍利子，色不異空，空不異色，"
             ),
             Verse(
                 number: 3,
                 text: "Body is nothing more than emptiness, emptiness is nothing more than body. The body is exactly empty, and emptiness is exactly body.",
-                pinyin: "sè bú yì kōng, kōng bú yì sè, sè jí shì kōng, kōng jí shì sè",
-                chinese: "色不異空，空不異色，色即是空，空即是色"
+                pinyin: "sè jí shì kōng kōng jí shì sè shòu xiǎng xíng shí yì fù rú shì",
+                chinese: "色即是空，空即是色。受想行識，亦復如是。"
             ),
             Verse(
                 number: 4,
                 text: "The other four aspects of human existence — feeling, thought, will, and consciousness — are likewise nothing more than emptiness, and emptiness nothing more than they.",
-                pinyin: "shòu xiǎng xíng shí, yì fù rú shì",
-                chinese: "受想行識，亦復如是"
+                pinyin: "shě lì zǐ shì zhū fǎ kōng xiàng bù shēng bù miè bù gòu bù jìng bù zēng bù jiǎn",
+                chinese: "舍利子，是諸法空相，不生不滅，不垢不淨，不增不減。"
             ),
             Verse(
                 number: 5,
                 text: "All things are empty: Nothing is born, nothing dies, nothing is pure, nothing is stained, nothing increases and nothing decreases.",
-                pinyin: "shè lì zǐ, shì zhū fǎ kōng xiàng, bù shēng bù miè, bù gòu bù jìng, bù zēng bù jiǎn",
-                chinese: "舍利子，是諸法空相，不生不滅，不垢不淨，不增不減"
+                pinyin: "shì gù kōng zhōng wú sè wú shòu xiǎng xíng shí",
+                chinese: "是故空中無色，無受想行識，"
             ),
             Verse(
                 number: 6,
                 text: "So, in emptiness, there is no body, no feeling, no thought, no will, no consciousness.",
-                pinyin: "shì gù kōng zhōng wú sè, wú shòu xiǎng xíng shí",
-                chinese: "是故空中無色，無受想行識"
+                pinyin: "wú yǎn ěr bí shé shēn yì wú sè shēng xiāng wèi chù fǎ",
+                chinese: "無眼耳鼻舌身意，無色聲香味觸法，"
             ),
             Verse(
                 number: 7,
                 text: "There are no eyes, no ears, no nose, no tongue, no body, no mind. There is no seeing, no hearing, no smelling, no tasting, no touching, no imagining.",
-                pinyin: "wú yǎn ěr bí shé shēn yì, wú sè shēng xiāng wèi chù fǎ",
-                chinese: "無眼耳鼻舌身意，無色聲香味觸法"
+                pinyin: "wú yǎn jiè nǎi zhì wú yì shí jiè wú wú míng yì wú wú míng jìn",
+                chinese: "無眼界，乃至無意識界，無無明，亦無無明盡，"
             ),
             Verse(
                 number: 8,
                 text: "There is nothing seen, nor heard, nor smelled, nor tasted, nor touched, nor imagined.",
-                pinyin: "wú yǎn jiè, nǎi zhì wú yì shí jiè",
-                chinese: "無眼界，乃至無意識界"
+                pinyin: "nǎi zhì wú lǎo sǐ yì wú lǎo sǐ jìn",
+                chinese: "乃至無老死，亦無老死盡。"
             ),
             Verse(
                 number: 9,
                 text: "There is no ignorance, and no end to ignorance. There is no old age and death, and no end to old age and death.",
-                pinyin: "wú wú míng, yì wú wú míng jìn, nǎi zhì wú lǎo sǐ, yì wú lǎo sǐ jìn",
-                chinese: "無無明，亦無無明盡，乃至無老死，亦無老死盡"
+                pinyin: "wú kǔ jí miè dào wú zhì yì wú dé",
+                chinese: "無苦集滅道，無智亦無得。"
             ),
             Verse(
                 number: 10,
                 text: "There is no suffering, no cause of suffering, no end to suffering, no path to follow.",
-                pinyin: "wú kǔ jí miè dào",
-                chinese: "無苦集滅道"
+                pinyin: "yǐ wú suǒ dé gù pú tí sà duǒ yī bō rě bō luó mì duō gù xīn wú guà ài",
+                chinese: "以無所得故，菩提薩埵，依般若波羅蜜多故，心無罣礙。"
             ),
             Verse(
                 number: 11,
                 text: "There is no attainment of wisdom, and no wisdom to attain.",
-                pinyin: "wú zhì yì wú dé",
-                chinese: "無智亦無得"
+                pinyin: "wú guà ài gù wú yǒu kǒng bù yuǎn lí diān dǎo mèng xiǎng jiū jìng niè pán",
+                chinese: "無罣礙故，無有恐怖，遠離顛倒夢想，究竟涅槃。"
             ),
             Verse(
                 number: 12,
                 text: "The Bodhisattvas rely on the Perfection of Wisdom, and so with no delusions, they feel no fear, and have Nirvana here and now.",
-                pinyin: "yǐ wú suǒ dé gù, pú tí sà duǒ, yī bō rě bō luó mì duō gù, xīn wú guà ài, wú guà ài gù, wú yǒu kǒng bù, yuǎn lí diān dǎo mèng xiǎng, jiū jìng niè pán",
-                chinese: "以無所得故，菩提薩埵，依般若波羅蜜多故，心無罣礙，無罣礙故，無有恐怖，遠離顛倒夢想，究竟涅槃"
+                pinyin: "sān shì zhū fó yī bō rě bō luó mì duō gù dé ā nuò duō luó sān miǎo sān pú tí",
+                chinese: "三世諸佛，依般若波羅蜜多故，得阿耨多羅三藐三菩提。"
             ),
             Verse(
                 number: 13,
                 text: "All the Buddhas, past, present, and future, rely on the Perfection of Wisdom, and live in full enlightenment.",
-                pinyin: "sān shì zhū fó, yī bō rě bō luó mì duō gù, dé ā nòu duō luó sān miǎo sān pú tí",
-                chinese: "三世諸佛，依般若波羅蜜多故，得阿耨多羅三藐三菩提"
+                pinyin: "gù zhī bō rě bō luó mì duō shì dà shén zhòu shì dà míng zhòu shì wú shàng zhòu shì wú děng děng zhòu",
+                chinese: "故知般若波羅蜜多，是大神咒，是大明咒，是無上咒，是無等等咒，"
             ),
             Verse(
                 number: 14,
                 text: "The Perfection of Wisdom is the greatest mantra. It is the clearest mantra, the highest mantra, the mantra that removes all suffering.",
-                pinyin: "gù zhī bō rě bō luó mì duō, shì dà shén zhòu, shì dà míng zhòu, shì wú shàng zhòu, shì wú děng děng zhòu, néng chú yí qiè kǔ, zhēn shí bù xū",
-                chinese: "故知般若波羅蜜多，是大神咒，是大明咒，是無上咒，是無等等咒，能除一切苦，真實不虛"
+                pinyin: "néng chú yī qiè kǔ zhēn shí bù xū",
+                chinese: "能除一切苦，真實不虛。"
             ),
             Verse(
                 number: 15,
                 text: "This is truth that cannot be doubted. Say it so: Gate, gate, paragate, parasamgate, bodhi svaha! (Gone, gone, gone beyond, gone completely beyond, enlightenment, hail!)",
-                pinyin: "gù shuō bō rě bō luó mì duō zhòu, jí shuō zhòu yuē: jiē dì jiē dì, bō luó jiē dì, bō luó sēng jiē dì, pú tí sà pó hē",
-                chinese: "故說般若波羅蜜多咒，即說咒曰：揭諦揭諦，波羅揭諦，波羅僧揭諦，菩提薩婆訶"
+                pinyin: "gù shuō bō rě bō luó mì duō zhòu jí shuō zhòu yuē jiē dì jiē dì bō luó jiē dì bō luó sēng jiē dì pú tí sà pó hē",
+                chinese: "故說般若波羅蜜多咒，即說咒曰：揭諦揭諦，波羅揭諦，波羅僧揭諦，菩提薩婆訶。"
             )
         ]
         for verse in heartChapter1.verses {
@@ -141,1288 +195,676 @@ class DataService {
         context.insert(heartSutra)
         }
         
-        // MARK: - Diamond Sutra
+        // Diamond Sutra
         if shouldLoadDiamondSutra {
         let diamondSutra = BuddhistText(
             title: "Diamond Sutra (金剛般若波羅蜜經)",
             author: "Buddha",
             textDescription: "The Diamond Cutter Sutra",
-            category: "Sutra"
+            category: "Sutra",
+            coverImageName: "DiamondSutra"
         )
         
-        // MARK: Diamond Sutra - Chapter 1: The Setting
         let diamondChapter1 = Chapter(number: 1, title: "The Setting")
         diamondChapter1.text = diamondSutra
         diamondChapter1.verses = [
             Verse(
                 number: 1,
                 text: "Thus have I heard. Once the Buddha was staying in the monastery in Anathapindika's garden in the Jeta Grove near Shravasti with a community of 1,250 bhikkhus, fully ordained monks.",
-                pinyin: "rú shì wǒ wén: yī shí fó zài shè wèi guó qí shù jǐ gū dú yuán, yǔ dà bǐ qiū zhòng qiān bǎi wǔ shí rén jù",
-                chinese: "如是我聞：一時佛在舍衛國祇樹給孤獨園，與大比丘眾千二百五十人俱"
+                pinyin: "rú shì wǒ wén。yī shí fó zài shě wèi guó，qí shù jǐ gū dú yuán，yǔ dà bǐ qiū zhòng qiān èr bǎi wǔ shí rén jù。",
+                chinese: "如是我聞。一時佛在舍衛國，祇樹給孤獨園，與大比丘眾千二百五十人俱。"
             ),
             Verse(
                 number: 2,
                 text: "That day, as evening approached, the Buddha put on his patched robe and, carrying his bowl, entered the capital of Shravasti to seek offerings of food.",
-                pinyin: "ěr shí shì zūn shí shí, zhuó yī chí bō, rù shè wèi dà chéng qǐ shí",
-                chinese: "爾時世尊食時，著衣持缽，入舍衛大城乞食"
+                pinyin: "ěr shí shì zūn shí shí，zhuó yī chí bō，rù shě wèi dà chéng qǐ shí。",
+                chinese: "爾時世尊食時，著衣持缽，入舍衛大城乞食。"
             ),
             Verse(
                 number: 3,
                 text: "After going from house to house and receiving offerings, he returned to the Jeta Grove. When he had finished his meal, he put away his bowl and robe, bathed his feet, and sat with his legs crossed and his body upright upon the seat arranged for him, mindfully fixing his attention in front of him.",
-                pinyin: "yú qí chéng zhōng cì dì qǐ yǐ, hái zhì běn chù. fàn shí qì, shōu yī bō, xǐ zú yǐ, fū zuò ér zuò",
-                chinese: "於其城中次第乞已，還至本處。飯食訖，收衣缽，洗足已，敷座而坐"
+                pinyin: "yú qí chéng zhōng，cì dì qǐ yǐ，hái zhì běn chù。fàn shí qì，shōu yī bō，xǐ zú yǐ，fū zuò ér zuò。",
+                chinese: "於其城中，次第乞已，還至本處。飯食訖，收衣缽，洗足已，敷座而坐。"
             )
         ]
         for verse in diamondChapter1.verses {
             verse.chapter = diamondChapter1
         }
         
-        // MARK: Diamond Sutra - Chapter 2: Subhuti's Request
         let diamondChapter2 = Chapter(number: 2, title: "Subhuti's Request")
         diamondChapter2.text = diamondSutra
         diamondChapter2.verses = [
             Verse(
                 number: 1,
                 text: "At that time the elder Subhuti came forth from the assembly, bared his right shoulder, knelt upon his right knee, and, raising his hands with palms joined, respectfully addressed the Buddha:",
-                pinyin: "shí zhǎng lǎo xū pú tí zài dà zhòng zhōng, jí cóng zuò qǐ, piān tǎn yòu jiān, yòu xī zhe dì, hé zhǎng gōng jìng ér bái fó yán",
-                chinese: "時長老須菩提在大眾中，即從座起，偏袒右肩，右膝著地，合掌恭敬而白佛言"
+                pinyin: "shí zháng lǎo xū pú tí，zài dà zhòng zhōng，jí cóng zuò qǐ，piān tǎn yòu jiān，yòu xī zhuó dì，hé zhǎng gōng jìng，ér bái fó yán：",
+                chinese: "時長老須菩提，在大眾中，即從座起，偏袒右肩，右膝著地，合掌恭敬，而白佛言："
             ),
             Verse(
                 number: 2,
                 text: "World-Honored One, it is rare how well the Tathagata teaches the bodhisattvas how to care for their minds.",
-                pinyin: "xī yǒu shì zūn! rú lái shàn hù niàn zhū pú sà, shàn fù zhǔ zhū pú sà",
-                chinese: "希有世尊！如來善護念諸菩薩，善付囑諸菩薩"
+                pinyin: "xī yǒu shì zūn！rú lái shàn hù niàn zhū pú sà，shàn fù zhǔ zhū pú sà。",
+                chinese: "希有世尊！如來善護念諸菩薩，善付囑諸菩薩。"
             ),
             Verse(
                 number: 3,
                 text: "World-Honored One, how should those who set forth on the bodhisattva path maintain their awareness, and how should they control their thoughts?",
-                pinyin: "shì zūn! shàn nán zǐ shàn nǚ rén fā ā nòu duō luó sān miǎo sān pú tí xīn, yīng yún hé zhù? yún hé xiáng fú qí xīn?",
-                chinese: "世尊！善男子善女人發阿耨多羅三藐三菩提心，應云何住？云何降伏其心？"
+                pinyin: "shì zūn！shàn nán zǐ、shàn nǚ rén，fā ā nòu duō luó sān miǎo sān pú tí xīn，yīng yún hé zhù？yún hé xiáng fú qí xīn？",
+                chinese: "世尊！善男子、善女人，發阿耨多羅三藐三菩提心，應云何住？云何降伏其心？"
             )
         ]
         for verse in diamondChapter2.verses {
             verse.chapter = diamondChapter2
         }
         
-        // MARK: Diamond Sutra - Chapter 3: The First Teaching
         let diamondChapter3 = Chapter(number: 3, title: "The First Teaching")
         diamondChapter3.text = diamondSutra
         diamondChapter3.verses = [
             Verse(
                 number: 1,
                 text: "The Buddha said: 'Subhuti, those who would now set forth on the bodhisattva path should thus give birth to this thought:'",
-                pinyin: "fó gào xū pú tí: zhū pú sà mó hē sà yīng rú shì xiáng fú qí xīn",
-                chinese: "佛告須菩提：諸菩薩摩訶薩應如是降伏其心"
+                pinyin: "fó yán：'shàn zāi，shàn zāi！xū pú tí，rú rǔ suǒ shuō，rú lái shàn hù niàn zhū pú sà，shàn fù zhǔ zhū pú sà。rǔ jīn dì tīng，dāng wéi rǔ shuō：",
+                chinese: "佛言：'善哉，善哉！須菩提，如汝所說，如來善護念諸菩薩，善付囑諸菩薩。汝今諦聽，當為汝說："
             ),
             Verse(
                 number: 2,
                 text: "'However many beings there are in whatever realms of being might exist, whether they are born from an egg or from a womb, from water or from air, whether they have form or no form, whether they have perception or no perception or neither perception nor no perception, I must lead them to the shore of liberation.'",
-                pinyin: "suǒ yǒu yī qiè zhòng shēng zhī lèi, ruò luǎn shēng, ruò tāi shēng, ruò shī shēng, ruò huà shēng; ruò yǒu sè, ruò wú sè; ruò yǒu xiǎng, ruò wú xiǎng, ruò fēi yǒu xiǎng fēi wú xiǎng, wǒ jiē lìng rù wú yú niè pán ér miè dù zhī",
-                chinese: "所有一切眾生之類，若卵生、若胎生、若濕生、若化生；若有色、若無色；若有想、若無想、若非有想非無想，我皆令入無餘涅槃而滅度之"
+                pinyin: "shàn nán zǐ、shàn nǚ rén，fā ā nòu duō luó sān miǎo sān pú tí xīn，yīng rú shì zhù，rú shì xiáng fú qí xīn。'",
+                chinese: "善男子、善女人，發阿耨多羅三藐三菩提心，應如是住，如是降伏其心。'"
             ),
             Verse(
                 number: 3,
                 text: "But after this innumerable, immeasurable, infinite number of beings has been liberated, in truth no being has been liberated. Why is this, Subhuti? It is because no bodhisattva who is a true bodhisattva cherishes the idea of an ego-entity, a personality, a being, or a separated individuality.",
-                pinyin: "rú shì miè dù wú liàng wú shù wú biān zhòng shēng, shí wú zhòng shēng dé miè dù zhě. hé yǐ gù? xū pú tí! ruò pú sà yǒu wǒ xiàng, rén xiàng, zhòng shēng xiàng, shòu zhě xiàng, jí fēi pú sà",
-                chinese: "如是滅度無量無數無邊眾生，實無眾生得滅度者。何以故？須菩提！若菩薩有我相、人相、眾生相、壽者相，即非菩薩"
+                pinyin: "'wéi rán，shì zūn！yuàn lè yù wén。'",
+                chinese: "'唯然，世尊！願樂欲聞。'"
             )
         ]
         for verse in diamondChapter3.verses {
             verse.chapter = diamondChapter3
         }
         
-        // MARK: Diamond Sutra - Chapter 4: The Wonder of Behaving Without Attachment
-        let diamondChapter4 = Chapter(number: 4, title: "The Wonder of Behaving Without Attachment")
+        let diamondChapter4 = Chapter(number: 4, title: "Wondrous Practice Without Abiding")
         diamondChapter4.text = diamondSutra
         diamondChapter4.verses = [
             Verse(
                 number: 1,
-                text: "Moreover, Subhuti, within this phenomenal world, a bodhisattva should practice giving without abiding in anything. This means that he should not give while abiding in form, nor should he give while abiding in sound, smell, taste, touch, or dharmas. Subhuti, a bodhisattva should not give while abiding in any notion whatsoever. And why is this? If a bodhisattva gives without abiding in any notion whatsoever, then his merit will be immeasurable.",
-                pinyin: "fù cì: xū pú tí! pú sà yú fǎ yīng wú suǒ zhù xíng yú bù shī. suǒ wèi bù zhù sè bù shī, bù zhù shēng, xiāng, wèi, chù, fǎ bù shī. xū pú tí! pú sà yīng rú shì bù shī, bù zhù yú xiàng. hé yǐ gù? ruò pú sà bù zhù xiàng bù shī, qí fú dé bù kě sī liàng",
-                chinese: "復次：須菩提！菩薩於法應無所住行於布施。所謂不住色布施，不住聲、香、味、觸、法布施。須菩提！菩薩應如是布施，不住於相。何以故？若菩薩不住相布施，其福德不可思量"
+                text: "The Buddha said to Subhuti: 'All bodhisattvas, great beings, should thus subdue their minds: Whatever forms of life there are, whether born from eggs, from wombs, from moisture, or spontaneously; whether with form or without form; whether with perception, without perception, or with neither perception nor non-perception—I must cause all of them to enter the final nirvana that leaves nothing behind and liberate them all.'",
+                pinyin: "fó gào xū pú tí：'zhū pú sà mó hē sà，yīng rú shì xiáng fú qí xīn：suǒ yǒu yī qiè zhòng shēng zhī lèi，ruò luǎn shēng，ruò tāi shēng，ruò shī shēng，ruò huà shēng；ruò yǒu sè，ruò wú sè；ruò yǒu xiǎng，ruò wú xiǎng，ruò fēi yǒu xiǎng fēi wú xiǎng，wǒ jiē lìng rù wú yú niè pán ér miè dù zhī。",
+                chinese: "佛告須菩提：'諸菩薩摩訶薩，應如是降伏其心：所有一切眾生之類，若卵生，若胎生，若濕生，若化生；若有色，若無色；若有想，若無想，若非有想非無想，我皆令入無餘涅槃而滅度之。"
             ),
             Verse(
                 number: 2,
-                text: "Subhuti, what do you think? Can the vastness of space to the east be measured?",
-                pinyin: "xū pú tí! yú yì yún hé? dōng fāng xū kōng kě sī liàng fǒu?",
-                chinese: "須菩提！於意云何？東方虛空可思量不？"
+                text: "'But although immeasurable, innumerable, and unlimited numbers of beings have been liberated, in truth no being has been liberated. Why is this, Subhuti? It is because no bodhisattva who is a true bodhisattva cherishes the idea of an ego-entity, a personality, a being, or a separated individuality.'",
+                pinyin: "rú shì miè dù wú liàng wú shù wú biān zhòng shēng，shí wú zhòng shēng dé miè dù zhě。hé yǐ gù？xū pú tí，ruò pú sà yǒu wǒ xiàng、rén xiàng、zhòng shēng xiàng、shòu zhě xiàng，jí fēi pú sà。",
+                chinese: "如是滅度無量無數無邊眾生，實無眾生得滅度者。何以故？須菩提，若菩薩有我相、人相、眾生相、壽者相，即非菩薩。"
             )
         ]
         for verse in diamondChapter4.verses {
             verse.chapter = diamondChapter4
         }
         
-        // MARK: Diamond Sutra - Chapter 5: Seeing the Truth That Lies Beneath Perception
-        let diamondChapter5 = Chapter(number: 5, title: "Seeing the Truth That Lies Beneath Perception")
+        let diamondChapter5 = Chapter(number: 5, title: "The True Perception")
         diamondChapter5.text = diamondSutra
         diamondChapter5.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? Can the vastness of space to the east be measured?",
-                pinyin: "xū pú tí! yú yì yún hé? dōng fāng xū kōng kě sī liàng fǒu?",
-                chinese: "須菩提！於意云何？東方虛空可思量不？"
+                text: "'Moreover, Subhuti, a bodhisattva should practice charity without abiding in the idea of form. That is to say, he should practice charity without being dependent on sights, sounds, smells, tastes, tactile sensations, or any mental concepts.'",
+                pinyin: "'fù cì，xū pú tí，pú sà yú fǎ，yīng wú suǒ zhù xíng yú bù shī，suǒ wèi bù zhù sè bù shī，bù zhù shēng xiāng wèi chù fǎ bù shī。",
+                chinese: "'復次，須菩提，菩薩於法，應無所住行於布施，所謂不住色布施，不住聲香味觸法布施。"
             ),
             Verse(
                 number: 2,
-                text: "No, it cannot, World-honored One.",
-                pinyin: "fǒu yě, shì zūn!",
-                chinese: "不也，世尊！"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, the merit of a bodhisattva who practices giving without abiding in any notion is just as immeasurable as the vastness of space in all directions.",
-                pinyin: "xū pú tí, nán xī běi sì wéi shàng xià xū kōng kě sī liàng fǒu? fǒu yě, shì zūn! xū pú tí! pú sà wú zhù xiàng bù shī, fú dé yì fù rú shì bù kě sī liàng",
-                chinese: "須菩提，南西北方四維上下虛空可思量不？不也，世尊！須菩提！菩薩無住相布施，福德亦復如是不可思量"
+                text: "'Subhuti, a bodhisattva should practice charity in this way. And why? Because the merit of such charity is not conceivable.'",
+                pinyin: "xū pú tí，pú sà yīng rú shì bù shī，bù zhù yú xiàng。hé yǐ gù？ruò pú sà bù zhù xiàng bù shī，qí fú dé bù kě sī liàng。",
+                chinese: "須菩提，菩薩應如是布施，不住於相。何以故？若菩薩不住相布施，其福德不可思量。"
             )
         ]
         for verse in diamondChapter5.verses {
             verse.chapter = diamondChapter5
         }
         
-        // MARK: Diamond Sutra - Chapter 6: The Rarity of True Belief
-        let diamondChapter6 = Chapter(number: 6, title: "The Rarity of True Belief")
+        let diamondChapter6 = Chapter(number: 6, title: "Rare Is True Faith")
         diamondChapter6.text = diamondSutra
         diamondChapter6.verses = [
             Verse(
                 number: 1,
-                text: "No, World-honored One, no one can see the Tathagata from his physical form. And why is this? The Tathagata has said that physical form is not physical form.",
-                pinyin: "yǐ shēn xiàng jiàn rú lái fǒu? fǒu yě, shì zūn! bù kě yǐ shēn xiàng dé jiàn rú lái. hé yǐ gù? rú lái suǒ shuō shēn xiàng, jí fēi shēn xiàng",
-                chinese: "以身相見如來不？」「不也，世尊！不可以身相得見如來。何以故？如來所說身相，即非身相"
+                text: "'Subhuti, what do you think? Can the Tathagata be seen by means of his bodily form?' 'No, World-Honored One, the Tathagata cannot be seen by means of his bodily form. Why? Because when the Tathagata speaks of bodily form, it is not really bodily form.'",
+                pinyin: "'xū pú tí，yú yì yún hé？kě yǐ shēn xiàng jiàn rú lái fǒu？' 'fǒu yě，shì zūn！bù kě yǐ shēn xiàng dé jiàn rú lái。hé yǐ gù？rú lái suǒ shuō shēn xiàng，jí fēi shēn xiàng。",
+                chinese: "'須菩提，於意云何？可以身相見如來否？' '否也，世尊！不可以身相得見如來。何以故？如來所說身相，即非身相。"
             ),
             Verse(
                 number: 2,
-                text: "The Buddha said to Subhuti, \"All forms are illusory. If you see that all forms are not forms, then you see the Tathagata.\"",
-                pinyin: "fó gào xū pú tí: fán suǒ yǒu xiàng, jiē shì xū wàng. ruò jiàn zhū xiàng fēi xiàng, jí jiàn rú lái",
-                chinese: "佛告須菩提：凡所有相，皆是虛妄。若見諸相非相，即見如來"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti said to the Buddha, \"World-honored One, can sentient beings, upon hearing these words, truly believe them?\"",
-                pinyin: "xū pú tí bái fó yán: shì zūn! pō yǒu zhòng shēng, dé wén rú shì yán shuō zhāng jù, shēng shí xìn fǒu?",
-                chinese: "須菩提白佛言：世尊！頗有眾生，得聞如是言說章句，生實信不？"
-            ),
-            Verse(
-                number: 4,
-                text: "The Buddha told Subhuti, \"Do not talk like that. Even after I have entered nirvana for five hundred years, there will still be people who uphold the precepts and generate merit who will believe these words and accept them as truth. You should know that they planted good roots not just with one Buddha, or two Buddhas, or three, or four, or five Buddhas, but that they planted good roots with infinite tens of millions of Buddhas. For a person who has one thought of pure belief, Subhuti, the Tathagata fully knows and fully sees that those sentient beings will attain such limitless merit.\"",
-                pinyin: "fó gào xū pú tí: mò zuò shì shuō! rú lái miè hòu, hòu wǔ bǎi suì, yǒu chí jiè xiū fú zhě, yú cǐ zhāng jù, néng shēng xìn xīn, yǐ cǐ wéi shí. dāng zhī shì rén, bù yú yī fó, èr fó, sān sì wǔ fó ér zhòng shàn gēn, yǐ yú wú liàng qiān wàn fó suǒ zhòng zhū shàn gēn. wén shì zhāng jù, nǎi zhì yī niàn shēng jìng xìn zhě; xū pú tí! rú lái xī zhī xī jiàn, shì zhū zhòng shēng dé rú shì wú liàng fú dé",
-                chinese: "佛告須菩提：莫作是說！如來滅後，後五百歲，有持戒修福者，於此章句，能生信心，以此為實。當知是人，不於一佛、二佛、三四五佛而種善根，已於無量千萬佛所種諸善根。聞是章句，乃至一念生淨信者；須菩提！如來悉知悉見，是諸眾生得如是無量福德"
-            ),
-            Verse(
-                number: 5,
-                text: "Such a person already does not have the notion of a self, the notion of others, the notion of sentient beings, the notion of longevity, the notion of phenomena, or the notion of non-phenomena. And why is this? If a sentient being clings to a notion with his mind, then he will cling to self, others, sentient beings, and longevity. If he clings to the notion of phenomena, then he will cling to self, others, sentient beings, and longevity. And why is this? If he clings to the notion of non-phenomena then he will cling to self, others, sentient beings, and longevity. Thus, he must not cling to phenomena or non-phenomena.",
-                pinyin: "hé yǐ gù? shì zhū zhòng shēng, wú fù wǒ xiàng, rén xiàng, zhòng shēng xiàng, shòu zhě xiàng, wú fǎ xiàng, yì wú fēi fǎ xiàng. hé yǐ gù? shì zhū zhòng shēng ruò xīn qǔ xiàng, jí wéi zhuó wǒ, rén, zhòng shēng, shòu zhě. ruò qǔ fǎ xiàng, jí zhuó wǒ, rén, zhòng shēng, shòu zhě. hé yǐ gù? ruò qǔ fēi fǎ xiàng, jí zhuó wǒ, rén, zhòng shēng, shòu zhě. shì gù bù yīng qǔ fǎ, bù yīng qǔ fēi fǎ",
-                chinese: "何以故？是諸眾生，無復我相、人相、眾生相、壽者相、無法相，亦無非法相。何以故？是諸眾生若心取相，即為著我、人、眾生、壽者。若取法相，即著我、人、眾生、壽者。何以故？若取非法相，即著我、人、眾生、壽者。是故不應取法，不應取非法"
+                text: "The Buddha said to Subhuti: 'All forms are unreal. When you see that all forms are unreal, then you will see the Tathagata.'",
+                pinyin: "fó gào xū pú tí：'fán suǒ yǒu xiàng，jiē shì xū wàng。ruò jiàn zhū xiàng fēi xiàng，jí jiàn rú lái。",
+                chinese: "佛告須菩提：'凡所有相，皆是虛妄。若見諸相非相，即見如來。"
             )
         ]
         for verse in diamondChapter6.verses {
             verse.chapter = diamondChapter6
         }
         
-        // MARK: Diamond Sutra - Chapter 7: Nothing Has Been Attained and Nothing Has Been Said
-        let diamondChapter7 = Chapter(number: 7, title: "Nothing Has Been Attained and Nothing Has Been Said")
+        let diamondChapter7 = Chapter(number: 7, title: "No Attainment, No Teaching")
         diamondChapter7.text = diamondSutra
         diamondChapter7.verses = [
             Verse(
                 number: 1,
-                text: "This is why I have often said to you, bhiksus, that even my teachings should be understood to be like a raft. If even the Dharma must be let go of, what about what is not the Dharma?",
-                pinyin: "shì yì gù, rú lái cháng shuō: rǔ děng bǐ qiū, zhī wǒ shuō fǎ, rú fá yù zhě; fǎ shàng yīng shě, hé kuàng fēi fǎ?",
-                chinese: "是義故，如來常說：汝等比丘，知我說法，如筏喻者；法尚應捨，何況非法？"
-            ),
-            Verse(
-                number: 2,
-                text: "Subhuti, what do you think? Has the Tathagata really attained anuttara samyaksambodhi? Has the Tathagata really spoken the Dharma?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái dé ā nòu duō luó sān miǎo sān pú tí yě? rú lái yǒu suǒ shuō fǎ yě?",
-                chinese: "須菩提！於意云何？如來得阿耨多羅三藐三菩提耶？如來有所說法耶？"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti said, \"As far as I understand what the Buddha has said, there is no standard Dharma that can be called anuttara samyaksambodhi, and there is no standard Dharma spoken by the Tathagata. And why is this? The Dharma of which the Tathagata speaks cannot be held on to, it cannot be spoken, it is not a phenomenon, and it is not a non-phenomenon. Why? All saints and sages are distinguished by their different understanding of the unconditioned Dharma.\"",
-                pinyin: "xū pú tí yán: rú wǒ jiě fó suǒ shuō yì, wú yǒu dìng fǎ, míng ā nòu duō luó sān miǎo sān pú tí; yì wú yǒu dìng fǎ rú lái kě shuō. hé yǐ gù? rú lái suǒ shuō fǎ, jiē bù kě qǔ, bù kě shuō; fēi fǎ, fēi fēi fǎ. suǒ yǐ zhě hé? yī qiè xián shèng, jiē yǐ wú wéi fǎ, ér yǒu chā bié",
-                chinese: "須菩提言：如我解佛所說義，無有定法，名阿耨多羅三藐三菩提；亦無有定法如來可說。何以故？如來所說法，皆不可取、不可說；非法、非非法。所以者何？一切賢聖，皆以無為法，而有差別"
+                text: "Subhuti said to the Buddha: 'World-Honored One, will there be any beings in the future who, when they hear this teaching, will believe it?' The Buddha said: 'Subhuti, they are neither beings nor non-beings. Why? Subhuti, \"beings,\" \"beings,\" the Tathagata says, are not really beings; they are just called \"beings.\"'",
+                pinyin: "xū pú tí bái fó yán：'shì zūn，pō yǒu zhòng shēng，dé wén rú shì yán shuō zhāng jù，néng shēng xìn xīn fǒu？' fó gào xū pú tí：'mò zuò shì shuō。xū pú tí，rú lái miè hòu，hòu wǔ bǎi suì，yǒu chí jiè xiū fú zhě，yú cǐ zhāng jù，néng shēng xìn xīn，yǐ wéi shí。",
+                chinese: "須菩提白佛言：'世尊，頗有眾生，得聞如是言說章句，生實信否？' 佛告須菩提：'莫作是說。須菩提，如來滅後，後五百歲，有持戒修福者，於此章句，能生信心，以此為實。"
             )
         ]
         for verse in diamondChapter7.verses {
             verse.chapter = diamondChapter7
         }
         
-        // MARK: Diamond Sutra - Chapter 8: Enlightenment Comes from These Teachings
-        let diamondChapter8 = Chapter(number: 8, title: "Enlightenment Comes from These Teachings")
+        let diamondChapter8 = Chapter(number: 8, title: "Equal and Unequal")
         diamondChapter8.text = diamondSutra
         diamondChapter8.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? If someone were to fill the three thousandfold world system with the seven treasures, used them for giving, and attained merit for this, would the merit be great?",
-                pinyin: "xū pú tí! yú yì yún hé? ruò rén mǎn sān qiān dà qiān shì jiè qī bǎo, yǐ yòng bù shī. shì rén suǒ dé fú dé, níng wéi duō fǒu?",
-                chinese: "須菩提！於意云何？若人滿三千大千世界七寶，以用布施。是人所得福德，寧為多不？"
+                text: "'Subhuti, what do you think? If someone filled the three thousand great thousand worlds with the seven treasures and gave them all away in the practice of charity, would the merit obtained by that person be great?' Subhuti said: 'Yes, World-Honored One. Why? Because this merit is not of the nature of merit, the Tathagata says the merit is great.'",
+                pinyin: "'xū pú tí，yú yì yún hé？ruò rén mǎn sān qiān dà qiān shì jiè qī bǎo，yǐ yòng bù shī，shì rén yǐ cǐ yīn yuán，dé fú duō fǒu？' 'rú shì，shì zūn！cǐ rén yǐ cǐ yīn yuán，dé fú shèn duō。",
+                chinese: "'須菩提，於意云何？若人滿三千大千世界七寶，以用布施，是人以是因緣，得福多否？' '如是，世尊！此人以是因緣，得福甚多。"
             ),
             Verse(
                 number: 2,
-                text: "Subhuti said, \"It would be very great, World-honored One. And why is this? Such merit is not the nature of merit; thus the Tathagata says it is great.\"",
-                pinyin: "xū pú tí yán: shèn duō, shì zūn! hé yǐ gù? shì fú dé, jí fēi fú dé xìng. shì gù rú lái shuō fú dé duō",
-                chinese: "須菩提言：甚多，世尊！何以故？是福德，即非福德性。是故如來說福德多"
-            ),
-            Verse(
-                number: 3,
-                text: "If someone else were to receive and uphold as few as four lines of verse from this sutra, and if he were to explain them to others, his merit would be even greater than that. And why is this? Subhuti, all Buddhas and all the supremely enlightened teachings of the Buddhas are born of this sutra. Subhuti, that which is called the Buddhadharma is not the Buddhadharma.",
-                pinyin: "ruò fù yǒu rén, yú cǐ jīng zhōng, shòu chí nǎi zhì sì jù jì děng, wèi tā rén shuō, qí fú shèng bǐ. hé yǐ gù? xū pú tí! yī qiè zhū fó, jí zhū fó ā nòu duō luó sān miǎo sān pú tí fǎ, jiē cóng cǐ jīng chū. xū pú tí! suǒ wèi fó fǎ zhě, jí fēi fó fǎ",
-                chinese: "若復有人，於此經中，受持乃至四句偈等，為他人說，其福勝彼。何以故？須菩提！一切諸佛，及諸佛阿耨多羅三藐三菩提法，皆從此經出。須菩提！所謂佛法者，即非佛法"
+                text: "'If, on the other hand, a person receives and holds even only four lines of this teaching and teaches them to others, his merit will be even greater. Why? Because, Subhuti, all buddhas and their highest, most fulfilled, most awakened teachings issue from this teaching.'",
+                pinyin: "'xū pú tí，ruò fú dé wén shì jīng，xìn xīn bù nì，qí fú shèng bǐ。hé yǐ gù？xū pú tí，zhū fó wú shàng zhèng děng zhèng jué，jiē cóng cǐ jīng chū。",
+                chinese: "'須菩提，若復得聞是經，信心不逆，其福勝彼。何以故？須菩提，諸佛無上正等正覺，皆從此經出。"
             )
         ]
         for verse in diamondChapter8.verses {
             verse.chapter = diamondChapter8
         }
         
-        // MARK: Diamond Sutra - Chapter 9: The Manifestation of One Mark and No Mark
-        let diamondChapter9 = Chapter(number: 9, title: "The Manifestation of One Mark and No Mark")
+        let diamondChapter9 = Chapter(number: 9, title: "Real Designation Is Undesignate")
         diamondChapter9.text = diamondSutra
         diamondChapter9.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? Would it be right for a srotapana to think like this: 'I have attained the fruit of srotapana'?",
-                pinyin: "xū pú tí! yú yì yún hé? xū tuó huán néng zuò shì niàn, wǒ dé xū tuó huán guǒ fǒu?",
-                chinese: "須菩提！於意云何？須陀洹能作是念，我得須陀洹果不？"
-            ),
-            Verse(
-                number: 2,
-                text: "Subhuti said, \"No, World-honored One. And why is this? Srotapana means 'stream-enterer', and yet there is nothing to be entered. To not enter into form, sound, smell, taste, touch, or dharmas is what is called srotapana.\"",
-                pinyin: "xū pú tí yán: bù yě, shì zūn! hé yǐ gù? xū tuó huán míng wéi rù liú, ér wú suǒ rù; bù rù sè, shēng, xiāng, wèi, chù, fǎ. shì míng xū tuó huán",
-                chinese: "須菩提言：不也，世尊！何以故？須陀洹名為入流，而無所入；不入色、聲、香、味、觸、法。是名須陀洹"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, what do you think? Would it be right for a sakradagami to think like this: 'I have attained the fruit of sakradagami?'",
-                pinyin: "xū pú tí! yú yì yún hé? sī tuó hán néng zuò shì niàn, wǒ dé sī tuó hán guǒ fǒu?",
-                chinese: "須菩提！於意云何？斯陀含能作是念，我得斯陀含果不？"
-            ),
-            Verse(
-                number: 4,
-                text: "Subhuti said, \"No, World-honored One. And why is this? Sakradagami means 'once-returner', and yet in truth there is no such thing as returning. This is what is called sakradagami.\"",
-                pinyin: "xū pú tí yán: bù yě, shì zūn! hé yǐ gù? sī tuó hán míng yī wǎng lái, ér shí wú wǎng lái, shì míng sī tuó hán",
-                chinese: "須菩提言：不也，世尊！何以故？斯陀含名一往來，而實無往來，是名斯陀含"
-            ),
-            Verse(
-                number: 5,
-                text: "Subhuti, what do you think? Would it be right for an anagami to think like this: 'I have attained the fruit of anagami?'",
-                pinyin: "xū pú tí! yú yì yún hé? ā nà hán néng zuò shì niàn, wǒ dé ā nà hán guǒ fǒu?",
-                chinese: "須菩提！於意云何？阿那含能作是念，我得阿那含果不？"
-            ),
-            Verse(
-                number: 6,
-                text: "Subhuti said, \"No, World-honored One. And why is this? Anagami means 'non-returner', and yet in truth there is no such thing as never returning. This is the reason it is called anagami.\"",
-                pinyin: "xū pú tí yán: bù yě, shì zūn! hé yǐ gù? ā nà hán míng wéi bù lái, ér shí wú bù lái, shì gù míng ā nà hán",
-                chinese: "須菩提言：不也，世尊！何以故？阿那含名為不來，而實無不來，是故名阿那含"
-            ),
-            Verse(
-                number: 7,
-                text: "Subhuti, what do you think? Would it be right for an arhat to think like this: 'I have attained the path of an arhat?'",
-                pinyin: "xū pú tí! yú yì yún hé? ā luó hàn néng zuò shì niàn, wǒ dé ā luó hàn dào fǒu?",
-                chinese: "須菩提！於意云何？阿羅漢能作是念，我得阿羅漢道不？"
-            ),
-            Verse(
-                number: 8,
-                text: "Subhuti said, \"No, World-honored One. And why is this? There is no standard Dharma that can be called an arhat.\"",
-                pinyin: "xū pú tí yán: bù yě, shì zūn! hé yǐ gù? shí wú yǒu fǎ míng ā luó hàn",
-                chinese: "須菩提言：不也，世尊！何以故？實無有法名阿羅漢"
+                text: "'Subhuti, what do you think? Does a stream-enterer think, \"I have obtained the fruit of stream-entry\"?' Subhuti said: 'No, World-Honored One. Why? Because \"stream-entry\" is merely a name. There is no stream-entry. The stream-enterer does not enter streams, forms, sounds, smells, tastes, tactile sensations, or mind objects. That is why he is called a stream-enterer.'",
+                pinyin: "'xū pú tí，yú yì yún hé？xū tuó huán néng zuò shì niàn：wǒ dé xū tuó huán guǒ fǒu？' xū pú tí yán：'fǒu yě，shì zūn！hé yǐ gù？xū tuó huán míng wéi rù liú，ér wú suǒ rù，bù rù sè shēng xiāng wèi chù fǎ，shì míng xū tuó huán。",
+                chinese: "'須菩提，於意云何？須陀洹能作是念：我得須陀洹果否？' 須菩提言：'否也，世尊！何以故？須陀洹名為入流，而無所入，不入色聲香味觸法，是名須陀洹。"
             )
         ]
         for verse in diamondChapter9.verses {
             verse.chapter = diamondChapter9
         }
         
-        // MARK: Diamond Sutra - Chapter 10: Adorning the Buddha Land
-        let diamondChapter10 = Chapter(number: 10, title: "Adorning the Buddha Land")
+        let diamondChapter10 = Chapter(number: 10, title: "Setting Forth Pure Lands")
         diamondChapter10.text = diamondSutra
         diamondChapter10.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, in reality, is without practice, and thus it is called delighting in the practice of calm and quiet.",
-                pinyin: "xū pú tí, shí wú suǒ xíng, ér míng xū pú tí, shì lè ā lán nà xíng",
-                chinese: "須菩提，實無所行，而名須菩提，是樂阿蘭那行"
+                text: "'Subhuti, what do you think? When the Tathagata was with Burning Lamp Buddha, did he have any method of attaining highest, most fulfilled, awakened mind?' 'No, World-Honored One. As I understand the meaning of what the Buddha says, when the Tathagata was with Burning Lamp Buddha, he had no method of attaining highest, most fulfilled, awakened mind.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái zài rán děng fó suǒ，yú fǎ yǒu suǒ dé fǒu？' 'fǒu yě，shì zūn！rú lái zài rán děng fó suǒ，yú fǎ shí wú suǒ dé。",
+                chinese: "'須菩提，於意云何？如來在燃燈佛所，於法有所得否？' '否也，世尊！如來在燃燈佛所，於法實無所得。"
             ),
             Verse(
                 number: 2,
-                text: "The Buddha said to Subhuti, \"What do you think? In the past, when the Tathagata was with Dipamkara Buddha, did he attain the Dharma?\"",
-                pinyin: "fó gào xū pú tí: yú yì yún hé? rú lái xī zài rán dēng fó suǒ, yú fǎ yǒu suǒ dé fǒu?",
-                chinese: "佛告須菩提：於意云何？如來昔在然燈佛所，於法有所得不？"
-            ),
-            Verse(
-                number: 3,
-                text: "\"No, World-honored One, when the Tathagata was with Dipamkara Buddha, he truly did not attain the Dharma.\"",
-                pinyin: "fǒu yě, shì zūn! rú lái zài rán dēng fó suǒ, yú fǎ shí wú suǒ dé",
-                chinese: "不也，世尊！如來在然燈佛所，於法實無所得"
-            ),
-            Verse(
-                number: 4,
-                text: "\"Subhuti, what do you think? Does a bodhisattva adorn the Buddha land?\"",
-                pinyin: "xū pú tí! yú yì yún hé? pú sà zhuāng yán fó tǔ fǒu?",
-                chinese: "須菩提！於意云何？菩薩莊嚴佛土不？"
-            ),
-            Verse(
-                number: 5,
-                text: "\"No, World-honored One. And why is this? That which adorns the Buddha land is non-adornment, that is what is called adornment.\"",
-                pinyin: "fǒu yě, shì zūn! hé yǐ gù? zhuāng yán fó tǔ zhě, jí fēi zhuāng yán, shì míng zhuāng yán",
-                chinese: "不也，世尊！何以故？莊嚴佛土者，即非莊嚴，是名莊嚴"
-            ),
-            Verse(
-                number: 6,
-                text: "For this reason, Subhuti, all great bodhisattvas should give rise to purity of mind in this way: they should not give rise to a mind that abides in form; they should not give rise to a mind that abides in sound, smell, taste, touch, or dharmas. They should give rise to a mind that does not abide in anything.",
-                pinyin: "shì gù, xū pú tí! zhū pú sà mó hē sà, yīng rú shì shēng qīng jìng xīn. bù yīng zhù sè shēng xīn, bù yīng zhù shēng, xiāng, wèi, chù, fǎ shēng xīn, yīng wú suǒ zhù, ér shēng qí xīn",
-                chinese: "是故，須菩提！諸菩薩摩訶薩，應如是生清淨心。不應住色生心，不應住聲、香、味、觸、法生心，應無所住，而生其心"
-            ),
-            Verse(
-                number: 7,
-                text: "Subhuti, what do you think? If a man's body were as large as Mount Sumeru, would that body be large?",
-                pinyin: "xū pú tí! pì rú yǒu rén shēn rú xū mí shān wáng. yú yì yún hé? shì shēn wéi dà fǒu?",
-                chinese: "須菩提！譬如有人身如須彌山王。於意云何？是身為大不？"
-            ),
-            Verse(
-                number: 8,
-                text: "Subhuti said, \"Very large, World-honored One. And why is this? The Buddha has said that it is not the real body, and thus is called a large body.\"",
-                pinyin: "xū pú tí yán: shèn dà, shì zūn! hé yǐ gù? fó shuō fēi shēn, shì míng dà shēn",
-                chinese: "須菩提言：甚大，世尊！何以故？佛說非身，是名大身"
+                text: "The Buddha said: 'So it is, Subhuti. So it is. The Tathagata has no method of attaining highest, most fulfilled, awakened mind. Subhuti, if the Tathagata had had any method of attaining it, Burning Lamp Buddha would not have predicted, \"In your next life you will be a buddha named Shakyamuni.\"'",
+                pinyin: "'xū pú tí，yú yì yún hé？pú sà zhuāng yán fó tǔ fǒu？' 'fǒu yě，shì zūn！hé yǐ gù？zhuāng yán fó tǔ zhě，jí fēi zhuāng yán，shì míng zhuāng yán。",
+                chinese: "'須菩提，於意云何？菩薩莊嚴佛土否？' '否也，世尊！何以故？莊嚴佛土者，即非莊嚴，是名莊嚴。"
             )
         ]
         for verse in diamondChapter10.verses {
             verse.chapter = diamondChapter10
         }
         
-        // MARK: Diamond Sutra - Chapter 11: The Unconditioned Is Supreme
-        let diamondChapter11 = Chapter(number: 11, title: "The Unconditioned Is Supreme")
+        let diamondChapter11 = Chapter(number: 11, title: "The Superiority of Unformulated Truth")
         diamondChapter11.text = diamondSutra
         diamondChapter11.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, if each grain of sand in the Ganges River were to become a Ganges River, and if the sand in all of those rivers were added up, what do you think? Would that be a lot of sand?",
-                pinyin: "xū pú tí! rú héng hé zhōng suǒ yǒu shā shù, rú shì shā děng héng hé, yú yì yún hé? shì zhū héng hé shā, níng wéi duō fǒu?",
-                chinese: "須菩提！如恆河中所有沙數，如是沙等恆河，於意云何？是諸恆河沙，寧為多不？"
+                text: "'Subhuti, if a bodhisattva thinks, \"I am liberating sentient beings,\" he is not worthy of being called a bodhisattva. Why? Subhuti, there is no independently existing individual soul called a bodhisattva. Therefore the Buddha says all dharmas are without self, without personality, without entity, and without separate individuality.'",
+                pinyin: "'xū pú tí，rú pú sà yǒu wǒ xiàng、rén xiàng、zhòng shēng xiàng、shòu zhě xiàng，jí fēi pú sà。",
+                chinese: "'須菩提，如菩薩有我相、人相、眾生相、壽者相，即非菩薩。"
             ),
             Verse(
                 number: 2,
-                text: "Subhuti said, \"It would be a lot, World-honored One. The number of Ganges Rivers alone would be enormous; the amount of sand would be even greater than that.\"",
-                pinyin: "xū pú tí yán: shèn duō, shì zūn! dàn zhū héng hé, shàng duō wú shù, hé kuàng qí shā?",
-                chinese: "須菩提言：甚多，世尊！但諸恆河，尚多無數，何況其沙？"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, I will now truthfully tell you: if a good man or a good woman were to give away as many three thousandfold world systems filled with the seven treasures as there are those grains of sand, would his merit be great?",
-                pinyin: "xū pú tí! wǒ jīn shí yán gào rǔ, ruò yǒu shàn nán zǐ, shàn nǚ rén, yǐ qī bǎo mǎn ěr suǒ héng hé shā shù sān qiān dà qiān shì jiè, yǐ yòng bù shī, dé fú duō fǒu?",
-                chinese: "須菩提！我今實言告汝，若有善男子、善女人，以七寶滿爾所恆河沙數三千大千世界，以用布施，得福多不？"
-            ),
-            Verse(
-                number: 4,
-                text: "Subhuti said, \"It would be very great, World-honored One.\"",
-                pinyin: "xū pú tí yán: shèn duō, shì zūn!",
-                chinese: "須菩提言：甚多，世尊！"
-            ),
-            Verse(
-                number: 5,
-                text: "The Buddha said to Subhuti, \"If a good man or a good woman receives and upholds as few as four lines of verse from this sutra, and if he explains them to others, then his merit will be greater.\"",
-                pinyin: "fó gào xū pú tí: ruò shàn nán zǐ, shàn nǚ rén, yú cǐ jīng zhōng, nǎi zhì shòu chí sì jù jì děng, wèi tā rén shuō, ér cǐ fú dé, shèng qián fú dé",
-                chinese: "佛告須菩提：若善男子、善女人，於此經中，乃至受持四句偈等，為他人說，而此福德，勝前福德"
+                text: "'Subhuti, what do you think? Does the Tathagata have the physical eye?' 'Yes, World-Honored One, the Tathagata has the physical eye.'",
+                pinyin: "'suǒ yǐ zhě hé？xū pú tí，shí wú yǒu fǎ míng pú sà。",
+                chinese: "'所以者何？須菩提，實無有法名菩薩。"
             )
         ]
         for verse in diamondChapter11.verses {
             verse.chapter = diamondChapter11
         }
         
-        // MARK: Diamond Sutra - Chapter 12: Honoring the True Teaching
-        let diamondChapter12 = Chapter(number: 12, title: "Honoring the True Teaching")
+        let diamondChapter12 = Chapter(number: 12, title: "Venerating the True Teaching")
         diamondChapter12.text = diamondSutra
         diamondChapter12.verses = [
             Verse(
                 number: 1,
-                text: "Furthermore, Subhuti, anyone who explains this sutra, even four lines of verse from it, should be honored by people in this world, by those in heaven, and by asuras as if he were a Buddha's stupa or shrine. What then of anyone who receives, upholds, reads, and chants the teachings of this sutra with all of his strength? Subhuti, you should know that such a person already has become accomplished in the highest and rarest Dharma. Wherever this sutra can be found, there also is the Buddha; and it should be honored as if it were one of his disciples.",
-                pinyin: "fù cì, xū pú tí! suí chù shuō shì jīng, nǎi zhì sì jù jì děng, dāng zhī cǐ chù, yī qiè shì jiān, tiān rén, ā xiū luó, jiē yīng gōng yǎng, rú fó tǎ miào, hé kuàng yǒu rén jìn néng shòu chí dú sòng. xū pú tí! dāng zhī shì rén chéng jiù zuì shàng dì yī xī yǒu zhī fǎ. ruò shì jīng diǎn suǒ zài zhī chù, jí wéi yǒu fó, ruò zūn zhòng dì zǐ",
-                chinese: "復次，須菩提！隨處說是經，乃至四句偈等，當知此處，一切世間、天人、阿修羅，皆應供養，如佛塔廟，何況有人盡能受持讀誦。須菩提！當知是人成就最上第一希有之法。若是經典所在之處，即為有佛，若尊重弟子"
+                text: "'Moreover, Subhuti, if there were as many Ganges rivers as the grains of sand in the great Ganges, and if there were as many buddha lands as grains of sand in all those Ganges rivers, would those buddha lands be many?' 'Very many, World-Honored One.'",
+                pinyin: "'fù cì，xū pú tí，ruò rén yǐ cǐ jīng，yǔ sì zhòng děng shuō，qí fú zuì shèng。hé yǐ gù？xū pú tí，yī qiè zhū fó，jí zhū fó ā nòu duō luó sān miǎo sān pú tí fǎ，jiē cóng cǐ jīng chū。",
+                chinese: "'復次，須菩提，若人以此經，與四眾等說，其福最勝。何以故？須菩提，一切諸佛，及諸佛阿耨多羅三藐三菩提法，皆從此經出。"
+            ),
+            Verse(
+                number: 2,
+                text: "The Buddha said: 'Subhuti, if a good man or good woman were to take from this teaching even only four lines and teach them to others, his or her merit would be greater than the merit of one who gave those buddha lands filled with the seven treasures. Why? Because, Subhuti, all buddhas and their highest, most fulfilled, most awakened teachings issue from this teaching.'",
+                pinyin: "xū pú tí，suǒ wèi fó fǎ zhě，jí fēi fó fǎ，shì míng fó fǎ。",
+                chinese: "須菩提，所謂佛法者，即非佛法，是名佛法。"
             )
         ]
         for verse in diamondChapter12.verses {
             verse.chapter = diamondChapter12
         }
         
-        // MARK: Diamond Sutra - Chapter 13: The Name of This Sutra
-        let diamondChapter13 = Chapter(number: 13, title: "The Name of This Sutra")
+        let diamondChapter13 = Chapter(number: 13, title: "The Way Is Made Plain")
         diamondChapter13.text = diamondSutra
         diamondChapter13.verses = [
             Verse(
                 number: 1,
-                text: "At that time, Subhuti asked the Buddha, \"World-honored One, what should this sutra be called, and how should we receive it and uphold it?\"",
-                pinyin: "ěr shí, xū pú tí bái fó yán: shì zūn! dāng hé míng cǐ jīng? wǒ děng yún hé fèng chí?",
-                chinese: "爾時，須菩提白佛言：世尊！當何名此經？我等云何奉持？"
+                text: "'Subhuti, what do you think? Does the Tathagata have the flesh eye?' 'Yes, World-Honored One, the Tathagata has the flesh eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu ròu yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu ròu yǎn。",
+                chinese: "'須菩提，於意云何？如來有肉眼否？' '如是，世尊！如來有肉眼。"
             ),
             Verse(
                 number: 2,
-                text: "The Buddha said to Subhuti, \"This sutra is called the Diamond Prajnaparamita, and by this name you should receive it and uphold it. And why is this? Subhuti, the Buddha has said that prajnaparamita is not prajnaparamita, and that that is what is called prajnaparamita.\"",
-                pinyin: "fó gào xū pú tí: shì jīng míng wéi jīn gāng bō rě bō luó mì, yǐ shì míng zì, rǔ dāng fèng chí. suǒ yǐ zhě hé? xū pú tí! fó shuō bō rě bō luó mì, jí fēi bō rě bō luó mì, shì míng bō rě bō luó mì",
-                chinese: "佛告須菩提：是經名為金剛般若波羅蜜，以是名字，汝當奉持。所以者何？須菩提！佛說般若波羅蜜，即非般若波羅蜜，是名般若波羅蜜"
+                text: "'Subhuti, what do you think? Does the Tathagata have the heavenly eye?' 'Yes, World-Honored One, the Tathagata has the heavenly eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu tiān yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu tiān yǎn。",
+                chinese: "'須菩提，於意云何？如來有天眼否？' '如是，世尊！如來有天眼。"
             ),
             Verse(
                 number: 3,
-                text: "Subhuti, what do you think? Does the Tathagata speak the Dharma?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yǒu suǒ shuō fǎ fǒu?",
-                chinese: "須菩提！於意云何？如來有所說法不？"
+                text: "'Subhuti, what do you think? Does the Tathagata have the wisdom eye?' 'Yes, World-Honored One, the Tathagata has the wisdom eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu huì yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu huì yǎn。",
+                chinese: "'須菩提，於意云何？如來有慧眼否？' '如是，世尊！如來有慧眼。"
             ),
             Verse(
                 number: 4,
-                text: "Subhuti said to the Buddha, \"World-honored One, the Tathagata has not said anything.\"",
-                pinyin: "xū pú tí bái fó yán: shì zūn! rú lái wú suǒ shuō",
-                chinese: "須菩提白佛言：世尊！如來無所說"
+                text: "'Subhuti, what do you think? Does the Tathagata have the dharma eye?' 'Yes, World-Honored One, the Tathagata has the dharma eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu fǎ yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu fǎ yǎn。",
+                chinese: "'須菩提，於意云何？如來有法眼否？' '如是，世尊！如來有法眼。"
             ),
             Verse(
                 number: 5,
-                text: "Subhuti, what do you think? Is all the fine dust throughout the three thousandfold world system a lot of dust or not?",
-                pinyin: "xū pú tí! yú yì yún hé? sān qiān dà qiān shì jiè suǒ yǒu wēi chén, shì wéi duō fǒu?",
-                chinese: "須菩提！於意云何？三千大千世界所有微塵，是為多不？"
-            ),
-            Verse(
-                number: 6,
-                text: "Subhuti said, \"It is a lot, World-honored One.\"",
-                pinyin: "xū pú tí yán: shèn duō, shì zūn!",
-                chinese: "須菩提言：甚多，世尊！"
-            ),
-            Verse(
-                number: 7,
-                text: "Subhuti, the Tathagata says that all of that fine dust is not fine dust, and that that is what is called fine dust. The Tathagata says that the world is not the world, and that that is what is called the world.",
-                pinyin: "xū pú tí! zhū wēi chén, rú lái shuō fēi wēi chén, shì míng wēi chén. rú lái shuō shì jiè fēi shì jiè, shì míng shì jiè",
-                chinese: "須菩提！諸微塵，如來說非微塵，是名微塵。如來說世界非世界，是名世界"
-            ),
-            Verse(
-                number: 8,
-                text: "Subhuti, what do you think? Can the Tathagata be seen by his thirty-two marks?",
-                pinyin: "xū pú tí! yú yì yún hé? kě yǐ sān shí èr xiàng jiàn rú lái fǒu?",
-                chinese: "須菩提！於意云何？可以三十二相見如來不？"
-            ),
-            Verse(
-                number: 9,
-                text: "No, World-honored One. And why is this? The Tathagata has said that the thirty-two marks are not marks, and that that is what is called thirty-two marks.",
-                pinyin: "fǒu yě, shì zūn! bù kě yǐ sān shí èr xiàng dé jiàn rú lái. hé yǐ gù? rú lái shuō sān shí èr xiàng, jí shì fēi xiàng, shì míng sān shí èr xiàng",
-                chinese: "不也，世尊！不可以三十二相得見如來。何以故？如來說三十二相，即是非相，是名三十二相"
-            ),
-            Verse(
-                number: 10,
-                text: "Subhuti, suppose a good man or good woman were to give his or her own life as many times as there are grains of sand in the Ganges, if one were to receive and uphold even four verses of this sutra and explain it to others, his merit would be greater.",
-                pinyin: "xū pú tí! ruò yǒu shàn nán zǐ, shàn nǚ rén, yǐ héng hé shā děng shēn mìng bù shī, ruò fù yǒu rén, yú cǐ jīng zhōng, nǎi zhì shòu chí sì jù jì děng, wèi tā rén shuō, qí fú shèn duō!",
-                chinese: "須菩提！若有善男子、善女人，以恆河沙等身命布施，若復有人，於此經中，乃至受持四句偈等，為他人說，其福甚多！"
+                text: "'Subhuti, what do you think? Does the Tathagata have the buddha eye?' 'Yes, World-Honored One, the Tathagata has the buddha eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu fó yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu fó yǎn。",
+                chinese: "'須菩提，於意云何？如來有佛眼否？' '如是，世尊！如來有佛眼。"
             )
         ]
         for verse in diamondChapter13.verses {
             verse.chapter = diamondChapter13
         }
         
-        // MARK: Diamond Sutra - Chapter 14: Ultimate Tranquility Beyond Notions
-        let diamondChapter14 = Chapter(number: 14, title: "Ultimate Tranquility Beyond Notions")
+        let diamondChapter14 = Chapter(number: 14, title: "Perfect Peace Lies in Freedom from Characteristic Distinctions")
         diamondChapter14.text = diamondSutra
         diamondChapter14.verses = [
             Verse(
                 number: 1,
-                text: "Then, after hearing this sutra and comprehending its deep meaning, Subhuti wept out loud and said to the Buddha, \"Rare, World-honored One, the Buddha has spoken such a deep, profound sutra. Since obtaining the wisdom eye I have not heard such a sutra. World-honored One, if anyone should hear this sutra and believe it with a pure mind, then he will give rise to true reality. You should know that this person will attain the supreme, rarest virtue. World-honored One, true reality is not reality, and that is what the Tathagata calls true reality.",
-                pinyin: "ěr shí, xū pú tí wén shuō shì jīng, shēn jiě yì qù, tì lèi běi qì, ér bái fó yán: xī yǒu, shì zūn! fó shuō rú shì shèn shēn jīng diǎn, wǒ cóng xī lái suǒ dé huì yǎn, wèi céng dé wén rú shì zhī jīng. shì zūn! ruò fù yǒu rén dé wén shì jīng, xìn xīn qīng jìng, jí shēng shí xiàng, dāng zhī shì rén chéng jiù dì yī xī yǒu gōng dé. shì zūn! shì shí xiàng zhě, jí shì fēi xiàng, shì gù rú lái shuō míng shí xiàng",
-                chinese: "爾時，須菩提聞說是經，深解義趣，涕淚悲泣，而白佛言：希有，世尊！佛說如是甚深經典，我從昔來所得慧眼，未曾得聞如是之經。世尊！若復有人得聞是經，信心清淨，即生實相，當知是人成就第一希有功德。世尊！是實相者，即是非相，是故如來說明實相"
+                text: "'Subhuti, what do you think? If there were as many Ganges rivers as the grains of sand in the great Ganges, would the grains of sand in all those Ganges rivers be many?' Subhuti said: 'Very many, World-Honored One. Just the Ganges rivers alone would be innumerable; how much more so would be their grains of sand.'",
+                pinyin: "'xū pú tí，yú yì yún hé？héng hé zhōng suǒ yǒu shā，fó shuō shì shā fǒu？' 'rú shì，shì zūn！rú lái shuō shì shā。",
+                chinese: "'須菩提，於意云何？恆河中所有沙，佛說是沙否？' '如是，世尊！如來說是沙。"
             ),
             Verse(
                 number: 2,
-                text: "World-honored One, today I have heard this sutra, believed it, understood it, received it, and upheld it, and this was not difficult. If five hundred years from now, someone should hear this sutra, believe it, understand it, receive it, and uphold it, then that person will be a rare person indeed.",
-                pinyin: "shì zūn! wǒ jīn dé wén rú shì jīng diǎn, xìn jiě shòu chí bù zú wéi nán, ruò dāng lái shì hòu wǔ bǎi suì, qí yǒu zhòng shēng, dé wén shì jīng, xìn jiě shòu chí, shì rén zé wéi dì yī xī yǒu",
-                chinese: "世尊！我今得聞如是經典，信解受持不足為難，若當來世後五百歲，其有眾生，得聞是經，信解受持，是人則為第一希有"
-            ),
-            Verse(
-                number: 3,
-                text: "And why is this? That person is without a notion of self, notion of others, notion of sentient beings, or notion of longevity. And why is this? The notion of a self is not a notion, and the notion of others, sentient beings, and longevity are not notions. And why is this? That which turns away from all notions is called all Buddhas.",
-                pinyin: "hé yǐ gù? cǐ rén wú wǒ xiàng, wú rén xiàng, wú zhòng shēng xiàng, wú shòu zhě xiàng. suǒ yǐ zhě hé? wǒ xiàng jí shì fēi xiàng; rén xiàng, zhòng shēng xiàng, shòu zhě xiàng, jí shì fēi xiàng. hé yǐ gù? lí yī qiè zhū xiàng, jí míng zhū fó",
-                chinese: "何以故？此人無我相、無人相、無眾生相、無壽者相。所以者何？我相即是非相；人相、眾生相、壽者相，即是非相。何以故？離一切諸相，即名諸佛"
-            ),
-            Verse(
-                number: 4,
-                text: "The Buddha said to Subhuti, \"So it is, so it is. Moreover, if a person hears this sutra and does not become alarmed, or frightened, or scared, then this person is indeed a rare person. And why is this? Subhuti, the Tathagata has said that the supreme paramita is not the supreme paramita, and that this is what is called the supreme paramita.",
-                pinyin: "fó gào xū pú tí: rú shì, rú shì! ruò fù yǒu rén dé wén shì jīng, bù jīng, bù bù, bù wèi, dāng zhī shì rén, shèn wéi xī yǒu. hé yǐ gù? xū pú tí! rú lái shuō dì yī bō luó mì jí fēi dì yī bō luó mì, shì míng dì yī bō luó mì",
-                chinese: "佛告須菩提：如是，如是！若復有人得聞是經，不驚、不怖、不畏，當知是人，甚為希有。何以故？須菩提！如來說第一波羅蜜即非第一波羅蜜，是名第一波羅蜜"
-            ),
-            Verse(
-                number: 5,
-                text: "Subhuti, the Tathagata has said that the paramita of patience is not the paramita of patience. And why is this? Subhuti, long ago when my body was being cut apart by King Kalinga, I had no notion of self, no notion of others, no notion of sentient beings, and no notion of longevity.",
-                pinyin: "xū pú tí! rěn rǔ bō luó mì, rú lái shuō fēi rěn rǔ bō luó mì, shì míng rěn rǔ bō luó mì. hé yǐ gù? xū pú tí! rú wǒ xī wèi gē lì wáng gē jié shēn tǐ, wǒ yú ěr shí, wú wǒ xiàng, wú rén xiàng, wú zhòng shēng xiàng, wú shòu zhě xiàng",
-                chinese: "須菩提！忍辱波羅蜜，如來說非忍辱波羅蜜，是名忍辱波羅蜜。何以故？須菩提！如我昔為歌利王割截身體，我於爾時，無我相、無人相、無眾生相、無壽者相"
-            ),
-            Verse(
-                number: 6,
-                text: "And why was this? If at that distant time, as my body was being cut apart piece by piece, if I had had a notion of self, a notion of others, a notion of sentient beings, or a notion of longevity, I would have become angry. Subhuti, think about this some more; five hundred lifetimes ago when I was a practitioner of patience, I was without a notion of self, a notion of others, a notion of sentient beings, or a notion of longevity.",
-                pinyin: "hé yǐ gù? wǒ yú wǎng xī jié jié zhī jiě shí, ruò yǒu wǒ xiàng, rén xiàng, zhòng shēng xiàng, shòu zhě xiàng, yīng shēng chēn hèn. xū pú tí! yòu niàn guò qù yú wǔ bǎi shì, zuò rěn rǔ xiān rén, yú ěr suǒ shì, wú wǒ xiàng, wú rén xiàng, wú zhòng shēng xiàng, wú shòu zhě xiàng",
-                chinese: "何以故？我於往昔節節支解時，若有我相、人相、眾生相、壽者相，應生瞋恨。須菩提！又念過去於五百世，作忍辱仙人，於爾所世，無我相、無人相、無眾生相、無壽者相"
-            ),
-            Verse(
-                number: 7,
-                text: "For this reason, Subhuti, a bodhisattva should turn away from all notions, and initiate the mind of anuttara samyaksambodhi. He should not give rise to a mind abiding in form, and he should not give rise to a mind abiding in sound, smell, taste, touch, or dharmas. He should give rise to a mind that does not abide in anything.",
-                pinyin: "shì gù, xū pú tí! pú sà yīng lí yī qiè xiàng, fā ā nòu duō luó sān miǎo sān pú tí xīn, bù yīng zhù sè shēng xīn, bù yīng zhù shēng, xiāng, wèi, chù, fǎ shēng xīn, yīng shēng wú suǒ zhù xīn",
-                chinese: "是故，須菩提！菩薩應離一切相，發阿耨多羅三藐三菩提心，不應住色生心，不應住聲、香、味、觸、法生心，應生無所住心"
-            ),
-            Verse(
-                number: 8,
-                text: "If the mind abides in anything it is a false abiding. Thus, the Buddha says that a bodhisattva should not give abiding in form. Subhuti, a bodhisattva should give in this way to benefit all sentient beings. The Tathagata says that all notions are not notions, and therefore he also says that all sentient beings are not sentient beings.",
-                pinyin: "ruò xīn yǒu zhù, jí wéi fēi zhù. shì gù fó shuō pú sà xīn bù yīng zhù sè bù shī. xū pú tí! pú sà wèi lì yì yī qiè zhòng shēng gù, yīng rú shì bù shī. rú lái shuō yī qiè zhū xiàng, jí shì fēi xiàng; yòu shuō yī qiè zhòng shēng, jí fēi zhòng shēng",
-                chinese: "若心有住，即為非住。是故佛說菩薩心，不應住色布施。須菩提！菩薩為利益一切眾生故，應如是布施。如來說一切諸相，即是非相；又說一切眾生，即非眾生"
-            ),
-            Verse(
-                number: 9,
-                text: "Subhuti, the Tathagata is a speaker of what is true, what is real, what is so, what is not deceptive, and what is not altered. Subhuti, the Dharma that the Tathagata has attained is not real and it is not unreal.",
-                pinyin: "xū pú tí! rú lái shì zhēn yǔ zhě, shí yǔ zhě, rú yǔ zhě, bù kuáng yǔ zhě, bù yì yǔ zhě. xū pú tí! rú lái suǒ dé fǎ, cǐ fǎ wú shí wú xū",
-                chinese: "須菩提！如來是真語者、實語者、如語者、不誑語者、不異語者。須菩提！如來所得法，此法無實無虛"
-            ),
-            Verse(
-                number: 10,
-                text: "Subhuti, when the mind of a bodhisattva abides in phenomena and practices giving he is like a person who has entered into darkness—he sees nothing at all. When the mind of a bodhisattva does not abide in any phenomena and practices giving, he is like someone who has eyes in the full light of the sun—he sees all forms clearly.",
-                pinyin: "xū pú tí! ruò pú sà xīn zhù yú fǎ ér xíng bù shī, rú rén rù àn, jí wú suǒ jiàn. ruò pú sà xīn bù zhù fǎ ér xíng bù shī, rú rén yǒu mù, rì guāng míng zhào, jiàn zhǒng zhǒng sè",
-                chinese: "須菩提！若菩薩心住於法而行布施，如人入闇，即無所見。若菩薩心不住法而行布施，如人有目，日光明明照，見種種色"
-            ),
-            Verse(
-                number: 11,
-                text: "Subhuti, if in future lifetimes there are good men and good women who can receive, uphold, read, and chant this sutra, the Tathagata fully knows and fully sees that these people will attain infinite, limitless virtue.",
-                pinyin: "xū pú tí! dāng lái zhī shì, ruò yǒu shàn nán zǐ, shàn nǚ rén, néng yú cǐ jīng shòu chí dú sòng, jí wéi rú lái yǐ fó zhì huì, xī zhī shì rén, xī jiàn shì rén, jiē dé chéng jiù wú liàng wú biān gōng dé",
-                chinese: "須菩提！當來之世，若有善男子、善女人，能於此經受持讀誦，即為如來以佛智慧，悉知是人，悉見是人，皆得成就無量無邊功德"
+                text: "'Subhuti, what do you think? If a good man or good woman ground the three thousand great thousand worlds to particles of dust, would those particles of dust be many?' 'Very many, World-Honored One.'",
+                pinyin: "'xū pú tí，yú yì yún hé？yī héng hé shā shuō yī shā，rú shì héng hé níng wéi shā shù，níng wéi duō fǒu？' 'shèn duō，shì zūn！",
+                chinese: "'須菩提，於意云何？一恆河沙說一沙，如是恆河寧為沙數，寧為多否？' '甚多，世尊！"
             )
         ]
         for verse in diamondChapter14.verses {
             verse.chapter = diamondChapter14
         }
         
-        // MARK: Diamond Sutra - Chapter 15: The Merit of Upholding This Sutra
-        let diamondChapter15 = Chapter(number: 15, title: "The Merit of Upholding This Sutra")
+        let diamondChapter15 = Chapter(number: 15, title: "The Incomparable Value of This Teaching")
         diamondChapter15.text = diamondSutra
         diamondChapter15.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, suppose a good man or good woman were to give as many of his or her lives as there are grains of sand in the Ganges River in the morning, and give as many of his or her lives as there are grains of sand in the Ganges River at noon, and give as many of his or her lives as there are grains of sand in the Ganges River in the afternoon, and that this giving continued for infinite hundreds of millions of billions of kalpas; if someone were to hear this sutra, believe it, and not turn his mind against it, his merit would be greater—what of the merit of one who copies, receives, upholds, reads, chants, and explains it to others?",
-                pinyin: "xū pú tí! ruò yǒu shàn nán zǐ, shàn nǚ rén, chū rì fēn yǐ héng hé shā děng shēn bù shī, zhōng rì fēn fù yǐ héng hé shā děng shēn bù shī, hòu rì fēn yì yǐ héng hé shā děng shēn bù shī, rú shì wú liàng bǎi qiān wàn yì jié, yǐ shēn bù shī. ruò fù yǒu rén, wén cǐ jīng diǎn, xìn xīn bù nì, qí fú shèng bǐ. hé kuàng shū xiě, shòu chí, dú sòng, wèi rén jiě shuō",
-                chinese: "須菩提！若有善男子、善女人，初日分以恆河沙等身布施，中日分復以恆河沙等身布施，後日分亦以恆河沙等身布施，如是無量百千萬億劫，以身布施。若復有人，聞此經典，信心不逆，其福勝彼。何況書寫、受持、讀誦、為人解說"
-            ),
-            Verse(
-                number: 2,
-                text: "Subhuti, in summation, the virtue of this sutra is infinite and unlimited. The Tathagata speaks this sutra to those who have initiated the mind of the Great Vehicle; he speaks it to those who have initiated the mind of the Supreme Vehicle. If someone can receive, uphold, read, and chant this sutra, and explain it to others, the Tathagata fully knows and fully sees that these people will attain infinite, limitless virtue.",
-                pinyin: "xū pú tí! yǐ yào yán zhī, shì jīng yǒu bù kě sī yì, bù kě chēng liàng wú biān gōng dé, rú lái wèi fā dà chéng zhě shuō, wèi fā zuì shàng chéng zhě shuō. ruò yǒu rén néng shòu chí dú sòng, guǎng wèi rén shuō, rú lái xī zhī shì rén, xī jiàn shì rén, jiē dé chéng jiù bù kě sī yì, bù kě chēng liàng, wú yǒu biān, bù kě sī yì gōng dé",
-                chinese: "須菩提！以要言之，是經有不可思議、不可稱量無邊功德，如來為發大乘者說，為發最上乘者說。若有人能受持讀誦、廣為人說，如來悉知是人、悉見是人，皆得成就不可思議、不可稱、無有邊、不可思議功德"
-            ),
-            Verse(
-                number: 3,
-                text: "For those who receive, uphold, read, chant, and explain this sutra to others, the Tathagata fully knows and fully sees that such people will attain infinite, immeasurable, limitless, inconceivable virtue. All such people will shoulder the anuttara samyaksambodhi of the Tathagata. And why is this? Subhuti, those who delight in the lesser Dharma cling to a view of self, a view of others, a view of sentient beings, and a view of longevity, and thus they are not able to listen to this sutra, to receive it, to read it, to chant it, or to explain it to others.",
-                pinyin: "rú shì rén děng, jí wéi hè dān rú lái ā nòu duō luó sān miǎo sān pú tí. hé yǐ gù? xū pú tí! ruò lè xiǎo fǎ zhě, zhuó wǒ jiàn, rén jiàn, zhòng shēng jiàn, shòu zhě jiàn, jí yú cǐ jīng bù néng tīng shòu dú sòng, wèi rén jiě shuō",
-                chinese: "如是人等，即為荷擔如來阿耨多羅三藐三菩提。何以故？須菩提！若樂小法者，著我見、人見、眾生見、壽者見，即於此經不能聽受讀誦、為人解說"
+                text: "'Subhuti, if a good man or good woman were to take from this teaching even only four lines and teach them to others, his or her merit would be greater than the merit of one who gave those worlds filled with the seven treasures. Why? Because, Subhuti, all buddhas and their highest, most fulfilled, most awakened teachings issue from this teaching.'",
+                pinyin: "'xū pú tí，wǒ jīn shí yán gào rǔ：ruò yǒu shàn nán zǐ、shàn nǚ rén，yǐ qī bǎo mǎn ěr suǒ héng hé shā shù sān qiān dà qiān shì jiè，yǐ yòng bù shī，dé fú duō fǒu？' 'shèn duō，shì zūn！",
+                chinese: "'須菩提，我今實言告汝：若有善男子、善女人，以七寶滿爾所恆河沙數三千大千世界，以用布施，得福多否？' '甚多，世尊！"
             )
         ]
         for verse in diamondChapter15.verses {
             verse.chapter = diamondChapter15
         }
         
-        // MARK: Diamond Sutra - Chapter 16: Purification of Karma
-        let diamondChapter16 = Chapter(number: 16, title: "Purification of Karma")
+        let diamondChapter16 = Chapter(number: 16, title: "Purgation Through Suffering the Final Martyrdoms")
         diamondChapter16.text = diamondSutra
         diamondChapter16.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, in whatever place this sutra can be found, all who are in the world should make offerings to it, as should all in heaven, and all asuras. They should treat this place as if it were a stupa; they should surround it, bow to it, and pay their deepest respect to it. They should scatter incense and flowers all around this place.",
-                pinyin: "xū pú tí! zài zài chù chù, ruò yǒu cǐ jīng, yī qiè shì jiān tiān rén, ā xiū luó suǒ yīng gòng yǎng, dāng zhī cǐ chù, jí wéi shì tǎ, jiē yīng gōng jìng, zuò lǐ wéi rào, yǐ zhū huá xiāng ér sàn qí chù",
-                chinese: "須菩提！在在處處，若有此經，一切世間天人、阿修羅所應供養，當知此處，即為是塔，皆應恭敬，作禮圍遶，以諸華香而散其處"
-            ),
-            Verse(
-                number: 2,
-                text: "Furthermore, Subhuti, if those good men and good women who receive, uphold, read, and chant this sutra are disdained by others, it is due to negative karma incurred in a former life. That negative karma should be the cause of the person falling into a lower realm, but in this life he is merely disdained. Eventually his negative karma from previous lives will be eradicated, and he will attain anuttara samyaksambodhi.",
-                pinyin: "fù cì: xū pú tí! shàn nán zǐ, shàn nǚ rén, shòu chí dú sòng cǐ jīng, ruò wéi rén qīng jiàn, shì rén xiān shì zuì yè, yīng duò è dào. yǐ jīn shì rén qīng jiàn gù, xiān shì zuì yè jí wéi xiāo miè, dāng dé ā nòu duō luó sān miǎo sān pú tí",
-                chinese: "復次：須菩提！善男子、善女人，受持讀誦此經，若為人輕賤，是人先世罪業，應墮惡道。以今世人輕賤故，先世罪業即為消滅，當得阿耨多羅三藐三菩提"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, I remember infinite asamkhya kalpas ago, before Dipamkara Buddha, I met, honored, served and made offerings to all of the eighty-four hundred billion nayutas of Buddhas with every opportunity.",
-                pinyin: "xū pú tí! wǒ niàn guò qù wú liàng ā sēng qí jié, yú rán dēng fó qián, dé zhí bā bǎi sì qiān wàn yì nà yóu tā zhū fó, xī jiē gòng yǎng chéng shì wú kōng guò zhě",
-                chinese: "須菩提！我念過去無量阿僧祇劫，於然燈佛前，得值八百四千萬億那由他諸佛，悉皆供養承事無空過者"
+                text: "'Subhuti, if a good man or good woman accepts and holds even only four lines of this teaching and teaches them to others, his or her merit will be greater than the merit of one who gave immeasurable, innumerable worlds filled with the seven treasures. Why? Because, Subhuti, all buddhas and their highest, most fulfilled, most awakened teachings issue from this teaching.'",
+                pinyin: "'ruò fù yǒu rén，wén cǐ jīng diǎn，xìn xīn bù nì，qí fú shèng bǐ。hé kuàng shū xiě、shòu chí、dú sòng、wéi rén jiě shuō。",
+                chinese: "'若復有人，聞此經典，信心不逆，其福勝彼。何況書寫、受持、讀誦、為人解說。"
             )
         ]
         for verse in diamondChapter16.verses {
             verse.chapter = diamondChapter16
         }
         
-        // MARK: Diamond Sutra - Chapter 17: Complete and Utter Selflessness
-        let diamondChapter17 = Chapter(number: 17, title: "Complete and Utter Selflessness")
+        let diamondChapter17 = Chapter(number: 17, title: "No One Attains Transcendental Wisdom")
         diamondChapter17.text = diamondSutra
         diamondChapter17.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, you should know that the teachings of this sutra are inconceivable, and its karmic results are inconceivable.",
-                pinyin: "zhī shì jīng yì bù kě sī yì, guǒ bào yì bù kě sī yì",
-                chinese: "知是經義不可思議，果報亦不可思議"
+                text: "'At that time Subhuti said to the Buddha: 'World-Honored One, if good men and good women resolve their minds on highest, most fulfilled, awakened mind, how should they abide? How should they subdue their minds?'",
+                pinyin: "'ěr shí，xū pú tí bái fó yán：'shì zūn！shàn nán zǐ、shàn nǚ rén，fā ā nòu duō luó sān miǎo sān pú tí xīn，yún hé yīng zhù？yún hé xiáng fú qí xīn？",
+                chinese: "'爾時，須菩提白佛言：'世尊！善男子、善女人，發阿耨多羅三藐三菩提心，云何應住？云何降伏其心？"
             ),
             Verse(
                 number: 2,
-                text: "Then Subhuti asked the Buddha, \"World-honored One, when good men and good women initiate the mind to anuttara samyaksambodhi, what should they abide in? And how should they subdue their minds?\"",
-                pinyin: "ěr shí, xū pú tí bái fó yán: shì zūn! shàn nán zǐ, shàn nǚ rén, fā ā nòu duō luó sān miǎo sān pú tí xīn, yún hé yīng zhù? yún hé xiáng fú qí xīn?",
-                chinese: "爾時，須菩提白佛言：世尊！善男子、善女人，發阿耨多羅三藐三菩提心，云何應住？云何降伏其心？"
-            ),
-            Verse(
-                number: 3,
-                text: "The Buddha said to Subhuti, \"When good men and good women initiate the mind to anuttara samyaksambodhi, they should give rise to a mind like this: 'I should liberate all sentient beings, and as I liberate them, I should know that there really are no sentient beings to be liberated.' And why is this? If a bodhisattva has a notion of self, notion of others, notion of sentient beings, or notion of longevity, then he is not a bodhisattva. And why is this? Subhuti, in truth, there is no phenomenon of initiating the mind to anuttara samyaksambodhi.",
-                pinyin: "fó gào xū pú tí: shàn nán zǐ, shàn nǚ rén, fā ā nòu duō luó sān miǎo sān pú tí xīn zhě, dāng shēng rú shì xīn: wǒ yīng miè dù yī qiè zhòng shēng. miè dù yī qiè zhòng shēng yǐ, ér wú yǒu yī zhòng shēng shí dé miè dù zhě. hé yǐ gù? ruò pú sà yǒu wǒ xiàng, rén xiàng, zhòng shēng xiàng, shòu zhě xiàng, jí fēi pú sà. hé yǐ gù? xū pú tí! shí wú yǒu fǎ, fā ā nòu duō luó sān miǎo sān pú tí xīn",
-                chinese: "佛告須菩提：善男子、善女人，發阿耨多羅三藐三菩提心者，當生如是心：我應滅度一切眾生。滅度一切眾生已，而無有一眾生實得滅度者。何以故？若菩薩有我相、人相、眾生相、壽者相，即非菩薩。何以故？須菩提！實無有法，發阿耨多羅三藐三菩提心"
-            ),
-            Verse(
-                number: 4,
-                text: "Subhuti, what do you think? When the Tathagata was with Dipamkara Buddha, was there the Dharma of anuttara samyaksambodhi to attain or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yú rán dēng fó suǒ, yǒu fǎ dé ā nòu duō luó sān miǎo sān pú tí fǒu?",
-                chinese: "須菩提！於意云何？如來於然燈佛所，有法得阿耨多羅三藐三菩提不？"
-            ),
-            Verse(
-                number: 5,
-                text: "There was not, World-honored One. As far as I understand the meaning of what the Buddha has said, when the Buddha was with Dipamkara Buddha, there was no Dharma of anuttara samyaksambodhi to attain.",
-                pinyin: "bù yě, shì zūn! rú wǒ jiě fó suǒ shuō yì, fó yú rán dēng fó suǒ, wú yǒu fǎ dé ā nòu duō luó sān miǎo sān pú tí",
-                chinese: "不也，世尊！如我解佛所說義，佛於然燈佛所，無有法得阿耨多羅三藐三菩提"
-            ),
-            Verse(
-                number: 6,
-                text: "The Buddha said, \"So it is, so it is. Subhuti, in truth, there is no Dharma of anuttara samyaksambodhi for the Tathagata to attain. Subhuti, if the Tathagata had attained the Dharma of anuttara samyaksambodhi, then Dipamkara Buddha would not have prophesized, 'In the future you will attain Buddhahood and be called Sakyamuni.' Since there is no Dharma of anuttara samyaksambodhi to attain, Dipamkara Buddha prophesized that I would become a Buddha, saying, 'In the future you will attain Buddhahood and be called Sakyamuni.' And why is this? 'Tathagata' means all phenomena as they are.",
-                pinyin: "fó yán: rú shì, rú shì! xū pú tí! shí wú yǒu fǎ, rú lái dé ā nòu duō luó sān miǎo sān pú tí. xū pú tí! ruò yǒu fǎ, rú lái dé ā nòu duō luó sān miǎo sān pú tí zhě, rán dēng fó jí bù yǔ wǒ shòu jì: rú lái shì, yú lái shì, dāng dé zuò fó, hào shì jiā móu ní. yǐ shí wú yǒu fǎ dé ā nòu duō luó sān miǎo sān pú tí, shì gù rán dēng fó yǔ wǒ shòu jì, zuò shì yán: rú lái shì, yú lái shì, dāng dé zuò fó, hào shì jiā móu ní. hé yǐ gù? rú lái zhě, jí zhū fǎ rú yì",
-                chinese: "佛言：如是，如是！須菩提！實無有法，如來得阿耨多羅三藐三菩提。須菩提！若有法，如來得阿耨多羅三藐三菩提者，然燈佛即不與我授記：如來是，於來世，當得作佛，號釋迦牟尼。以實無有法得阿耨多羅三藐三菩提，是故然燈佛與我授記，作是言：如來是，於來世，當得作佛，號釋迦牟尼。何以故？如來者，即諸法如義"
-            ),
-            Verse(
-                number: 7,
-                text: "Someone might say, 'The Tathagata has attained anuttara samyaksambodhi,' but Subhuti, there really is no Dharma of anuttara samyaksambodhi for the Buddha to attain. Subhuti, within the anuttara samyaksambodhi that the Tathagata has attained there is no real nor unreal.",
-                pinyin: "ruò yǒu rén yán: rú lái dé ā nòu duō luó sān miǎo sān pú tí, xū pú tí! shí wú yǒu fǎ, fó dé ā nòu duō luó sān miǎo sān pú tí. xū pú tí! rú lái suǒ dé ā nòu duō luó sān miǎo sān pú tí, yú shì zhōng wú shí wú xū",
-                chinese: "若有人言：如來得阿耨多羅三藐三菩提，須菩提！實無有法，佛得阿耨多羅三藐三菩提。須菩提！如來所得阿耨多羅三藐三菩提，於是中無實無虛"
-            ),
-            Verse(
-                number: 8,
-                text: "For these reasons, the Tathagata says that all phenomena are the Buddhadharma. Subhuti, that which is said to be all phenomena is not all phenomena, and that is why it is called all phenomena. Subhuti, it is the same as a great human body.",
-                pinyin: "shì gù rú lái shuō yī qiè fǎ, jiē shì fó fǎ. xū pú tí! suǒ yán yī qiè fǎ zhě, jí fēi yī qiè fǎ, shì gù míng yī qiè fǎ. xū pú tí! pì rú rén shēn zhǎng dà",
-                chinese: "是故如來說一切法，皆是佛法。須菩提！所言一切法者，即非一切法，是故名一切法。須菩提！譬如人身長大"
-            ),
-            Verse(
-                number: 9,
-                text: "Subhuti said, \"World-honored One, the Tathagata has said that a great human body is not a great human body, and that that is why it is called a great human body.\"",
-                pinyin: "xū pú tí yán: shì zūn! rú lái shuō rén shēn zhǎng dà, jí wéi fēi dà shēn, shì míng dà shēn",
-                chinese: "須菩提言：世尊！如來說人身長大，即為非大身，是名大身"
-            ),
-            Verse(
-                number: 10,
-                text: "Subhuti, a bodhisattva is just like that, and if he should say, 'I should liberate all sentient beings', then he is not a bodhisattva. And why is this? Subhuti, in reality there is no phenomenon called 'bodhisattva', and for this reason the Buddha has said that all phenomena are without self, without others, without sentient beings, and without longevity. Subhuti, if a bodhisattva should say, 'I will adorn the Buddha land,' then he is not a bodhisattva. And why is this? The Tathagata has said that that which adorns the Buddha land is non-adornment, and that that is what is called adornment. Subhuti, only after a bodhisattva has fully understood no self and no phenomena will the Tathagata say that he is a true bodhisattva.",
-                pinyin: "xū pú tí! pú sà yì rú shì. ruò zuò shì yán: wǒ dāng miè dù wú liàng zhòng shēng, jí bù míng pú sà. hé yǐ gù? xū pú tí! shí wú yǒu fǎ, míng wéi pú sà. shì gù fó shuō: yī qiè fǎ wú wǒ, wú rén, wú zhòng shēng, wú shòu zhě. xū pú tí! ruò pú sà zuò shì yán: wǒ dāng zhuāng yán fó tǔ, shì bù míng pú sà. hé yǐ gù? rú lái shuō zhuāng yán fó tǔ zhě, jí fēi zhuāng yán, shì míng zhuāng yán. xū pú tí! ruò pú sà tōng dá wú wǒ fǎ zhě, rú lái shuō míng zhēn shì pú sà",
-                chinese: "須菩提！菩薩亦如是。若作是言：我當滅度無量眾生，即不名菩薩。何以故？須菩提！實無有法，名為菩薩。是故佛說：一切法無我、無人、無眾生、無壽者。須菩提！若菩薩作是言：我當莊嚴佛土，是不名菩薩。何以故？如來說莊嚴佛土者，即非莊嚴，是名莊嚴。須菩提！若菩薩通達無我法者，如來說名真是菩薩"
+                text: "The Buddha said to Subhuti: 'Good men and good women who resolve their minds on highest, most fulfilled, awakened mind should thus resolve: \"I must liberate all sentient beings, yet when all sentient beings have been liberated, not a single sentient being has actually been liberated.\" Why? Subhuti, if a bodhisattva cherishes the idea of an ego-entity, a personality, a being, or a separated individuality, he is not a bodhisattva.'",
+                pinyin: "fó gào xū pú tí：'shàn nán zǐ、shàn nǚ rén，fā ā nòu duō luó sān miǎo sān pú tí xīn zhě，dāng shēng rú shì xīn：wǒ yīng miè dù yī qiè zhòng shēng。miè dù yī qiè zhòng shēng yǐ，ér wú yǒu yī zhòng shēng shí miè dù zhě。",
+                chinese: "佛告須菩提：'善男子、善女人，發阿耨多羅三藐三菩提心者，當生如是心：我應滅度一切眾生。滅度一切眾生已，而無有一眾生實滅度者。"
             )
         ]
         for verse in diamondChapter17.verses {
             verse.chapter = diamondChapter17
         }
         
-        // MARK: Diamond Sutra - Chapter 18: One Body Sees All
-        let diamondChapter18 = Chapter(number: 18, title: "One Body Sees All")
+        let diamondChapter18 = Chapter(number: 18, title: "All Modes of Mind Are Only Mind")
         diamondChapter18.text = diamondSutra
         diamondChapter18.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think, does the Tathagata have eyes of flesh or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yǒu ròu yǎn fǒu?",
-                chinese: "須菩提！於意云何？如來有肉眼不？"
+                text: "'Subhuti, what do you think? Does the Tathagata have the flesh eye?' 'Yes, World-Honored One, the Tathagata has the flesh eye.'",
+                pinyin: "'hé yǐ gù？ruò pú sà yǒu wǒ xiàng、rén xiàng、zhòng shēng xiàng、shòu zhě xiàng，zé fēi pú sà。",
+                chinese: "'何以故？若菩薩有我相、人相、眾生相、壽者相，則非菩薩。"
             ),
             Verse(
                 number: 2,
-                text: "Yes, World-honored One, the Tathagata has eyes of flesh.",
-                pinyin: "rú shì, shì zūn! rú lái yǒu ròu yǎn",
-                chinese: "如是，世尊！如來有肉眼"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, what do you think, does the Tathagata have heavenly eyes or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yǒu tiān yǎn fǒu?",
-                chinese: "須菩提！於意云何？如來有天眼不？"
-            ),
-            Verse(
-                number: 4,
-                text: "Yes, World-honored One, the Tathagata has heavenly eyes.",
-                pinyin: "rú shì, shì zūn! rú lái yǒu tiān yǎn",
-                chinese: "如是，世尊！如來有天眼"
-            ),
-            Verse(
-                number: 5,
-                text: "Subhuti, what do you think, does the Tathagata have wisdom eyes or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yǒu huì yǎn fǒu?",
-                chinese: "須菩提！於意云何？如來有慧眼不？"
-            ),
-            Verse(
-                number: 6,
-                text: "Yes, World-honored One, the Tathagata has wisdom eyes.",
-                pinyin: "rú shì, shì zūn! rú lái yǒu huì yǎn",
-                chinese: "如是，世尊！如來有慧眼"
-            ),
-            Verse(
-                number: 7,
-                text: "Subhuti, what do you think, does the Tathagata have Dharma eyes or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yǒu fǎ yǎn fǒu?",
-                chinese: "須菩提！於意云何？如來有法眼不？"
-            ),
-            Verse(
-                number: 8,
-                text: "Yes, World-honored One, the Tathagata has Dharma eyes.",
-                pinyin: "rú shì, shì zūn! rú lái yǒu fǎ yǎn",
-                chinese: "如是，世尊！如來有法眼"
-            ),
-            Verse(
-                number: 9,
-                text: "Subhuti, what do you think, does the Tathagata have Buddha eyes or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái yǒu fó yǎn fǒu?",
-                chinese: "須菩提！於意云何？如來有佛眼不？"
-            ),
-            Verse(
-                number: 10,
-                text: "Yes, World-honored One, the Tathagata has Buddha eyes.",
-                pinyin: "rú shì, shì zūn! rú lái yǒu fó yǎn",
-                chinese: "如是，世尊！如來有佛眼"
-            ),
-            Verse(
-                number: 11,
-                text: "Subhuti, what do you think, has the Buddha said that the sand in the Ganges River is sand or not?",
-                pinyin: "xū pú tí! yú yì yún hé? rú héng hé zhōng suǒ yǒu shā, fó shuō shì shā fǒu?",
-                chinese: "須菩提！於意云何？如恆河中所有沙，佛說是沙不？"
-            ),
-            Verse(
-                number: 12,
-                text: "Yes, World-honored One, the Tathagata has said that it is sand.",
-                pinyin: "rú shì, shì zūn! rú lái shuō shì shā",
-                chinese: "如是，世尊！如來說是沙"
-            ),
-            Verse(
-                number: 13,
-                text: "Subhuti, what do you think, if there were as many Ganges Rivers as there are grains of sand in the Ganges River, and if all of the sand in all of those rivers were added up, and if the number of Buddha worlds equaled the number of all of those grains of sand, would that be a lot?",
-                pinyin: "xū pú tí! yú yì yún hé? rú yī héng hé shā, yǒu rú shì shā děng héng hé, shì zhū héng hé suǒ yǒu shā shù, fó shì jiè rú shì, níng wéi duō fǒu?",
-                chinese: "須菩提！於意云何？如一恆河沙，有如是沙等恆河，是諸恆河所有沙數，佛世界如是，寧為多不？"
-            ),
-            Verse(
-                number: 14,
-                text: "It would be a lot, World-honored One.",
-                pinyin: "shèn duō, shì zūn!",
-                chinese: "甚多，世尊！"
-            ),
-            Verse(
-                number: 15,
-                text: "The Buddha said to Subhuti, \"The Tathagata fully knows and fully sees the minds of the sentient beings in all of these worlds. And how can this be? The Tathagata has said that all minds are not minds and that thus they are called minds. And why is this so? Subhuti, the mind of the past cannot be obtained, the mind of the present cannot be obtained, and the mind of the future cannot be obtained.",
-                pinyin: "fó gào xū pú tí: ěr suǒ guó tǔ zhōng suǒ yǒu zhòng shēng, ruò gàn zhǒng xīn, rú lái xī zhī. hé yǐ gù? rú lái shuō zhū xīn, jiē wéi fēi xīn, shì míng wéi xīn. suǒ yǐ zhě hé? xū pú tí! guò qù xīn bù kě dé, xiàn zài xīn bù kě dé, wèi lái xīn bù kě dé",
-                chinese: "佛告須菩提：爾所國土中所有眾生，若干種心，如來悉知。何以故？如來說諸心，皆為非心，是名為心。所以者何？須菩提！過去心不可得，現在心不可得，未來心不可得"
+                text: "'So it is, Subhuti. So it is. If a bodhisattva cherishes the idea of an ego-entity, a personality, a being, or a separated individuality, he is not a bodhisattva. Why? Subhuti, there is no independently existing individual soul called a bodhisattva.'",
+                pinyin: "'suǒ yǐ zhě hé？xū pú tí，shí wú yǒu fǎ fā ā nòu duō luó sān miǎo sān pú tí xīn zhě。",
+                chinese: "'所以者何？須菩提，實無有法發阿耨多羅三藐三菩提心者。"
             )
         ]
         for verse in diamondChapter18.verses {
             verse.chapter = diamondChapter18
         }
         
-        // MARK: Diamond Sutra - Chapter 19: Universal Transformation Within the Dharma Realm
-        let diamondChapter19 = Chapter(number: 19, title: "Universal Transformation Within the Dharma Realm")
+        let diamondChapter19 = Chapter(number: 19, title: "Absolute Reality Is the Only Foundation")
         diamondChapter19.text = diamondSutra
         diamondChapter19.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? If someone were to fill the three thousandfold world system with the seven treasures, and used them for giving, with this as a cause and condition, would he attain immense merit?",
-                pinyin: "xū pú tí! yú yì yún hé? ruò yǒu rén mǎn sān qiān dà qiān shì jiè qī bǎo, yǐ yòng bù shī, yǐ cǐ yīn yuán, dé fú duō fǒu?",
-                chinese: "須菩提！於意云何？若有人滿三千大千世界七寶，以用布施，以此因緣，得福多不？"
+                text: "'Subhuti, what do you think? Does the Tathagata have the flesh eye?' 'Yes, World-Honored One, the Tathagata has the flesh eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu ròu yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu ròu yǎn。",
+                chinese: "'須菩提，於意云何？如來有肉眼否？' '如是，世尊！如來有肉眼。"
             ),
             Verse(
                 number: 2,
-                text: "So it is, World-honored One. With this as a cause and condition he will attain immense merit.",
-                pinyin: "rú shì, shì zūn! yǐ cǐ yīn yuán, dé fú shèn duō",
-                chinese: "如是，世尊！以此因緣，得福甚多"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, if there really were such a thing as merit, the Tathagata would never speak about attaining immense merit. It is only because there is no such thing as merit that the Tathagata says that immense merit can be attained.",
-                pinyin: "xū pú tí! ruò fú yǒu fú dé, rú lái bù shuō dé fú dé duō. yǐ wú yǒu fú dé, gù rú lái shuō dé fú dé duō",
-                chinese: "須菩提！若復有福德，如來不說得福德多。以無有福德，故如來說得福德多"
+                text: "'Subhuti, what do you think? Does the Tathagata have the heavenly eye?' 'Yes, World-Honored One, the Tathagata has the heavenly eye.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rú lái yǒu tiān yǎn fǒu？' 'rú shì，shì zūn！rú lái yǒu tiān yǎn。",
+                chinese: "'須菩提，於意云何？如來有天眼否？' '如是，世尊！如來有天眼。"
             )
         ]
         for verse in diamondChapter19.verses {
             verse.chapter = diamondChapter19
         }
         
-        // MARK: Diamond Sutra - Chapter 20: Beyond Form and Notions
-        let diamondChapter20 = Chapter(number: 20, title: "Beyond Form and Notions")
+        let diamondChapter20 = Chapter(number: 20, title: "The Unreality of Phenomenal Distinctions")
         diamondChapter20.text = diamondSutra
         diamondChapter20.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? Can the Buddha be seen by his perfect physical body?",
-                pinyin: "xū pú tí! yú yì yún hé? fó kě yǐ jù zú sè shēn jiàn fǒu?",
-                chinese: "須菩提！於意云何？佛可以具足色身見不？"
+                text: "'Subhuti, what do you think? Can the Tathagata be seen by means of his bodily form?' 'No, World-Honored One, the Tathagata cannot be seen by means of his bodily form. Why? Because when the Tathagata speaks of bodily form, it is not really bodily form.'",
+                pinyin: "'xū pú tí，yú yì yún hé？kě yǐ shēn xiàng jiàn rú lái fǒu？' 'fǒu yě，shì zūn！bù kě yǐ shēn xiàng dé jiàn rú lái。",
+                chinese: "'須菩提，於意云何？可以身相見如來否？' '否也，世尊！不可以身相得見如來。"
             ),
             Verse(
                 number: 2,
-                text: "No, World-honored One. The Tathagata should not be seen by his perfect physical body. And why is this? The Tathagata has said that a perfect physical body is not a perfect physical body, and that that is what is called a perfect physical body.",
-                pinyin: "fǒu yě, shì zūn! rú lái bù yīng yǐ jù zú sè shēn jiàn. hé yǐ gù? rú lái shuō jù zú sè shēn, jí fēi jù zú sè shēn, shì míng jù zú sè shēn",
-                chinese: "不也，世尊！如來不應以具足色身見。何以故？如來說具足色身，即非具足色身，是名具足色身"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, what do you think? Can the Tathagata be seen by his perfect marks?",
-                pinyin: "xū pú tí! yú yì yún hé? rú lái kě yǐ jù zú zhū xiàng jiàn fǒu?",
-                chinese: "須菩提！於意云何？如來可以具足諸相見不？"
-            ),
-            Verse(
-                number: 4,
-                text: "No, World-honored One. The Tathagata should not be seen by his perfect marks. And why is this? The Tathagata has said that perfect marks are not perfect marks, and that that is what is called perfect marks.",
-                pinyin: "fǒu yě, shì zūn! rú lái bù yīng yǐ jù zú zhū xiàng jiàn. hé yǐ gù? rú lái shuō zhū xiàng jù zú, jí fēi jù zú, shì míng zhū xiàng jù zú",
-                chinese: "不也，世尊！如來不應以具足諸相見。何以故？如來說諸相具足，即非具足，是名諸相具足"
+                text: "The Buddha said to Subhuti: 'All forms are unreal. When you see that all forms are unreal, then you will see the Tathagata.'",
+                pinyin: "hé yǐ gù？rú lái suǒ shuō shēn xiàng，jí fēi shēn xiàng。",
+                chinese: "何以故？如來所說身相，即非身相。"
             )
         ]
         for verse in diamondChapter20.verses {
             verse.chapter = diamondChapter20
         }
         
-        // MARK: Diamond Sutra - Chapter 21: Speaking the Unspeakable
-        let diamondChapter21 = Chapter(number: 21, title: "Speaking the Unspeakable")
+        let diamondChapter21 = Chapter(number: 21, title: "Spoken Truth Cannot Be Expressed")
         diamondChapter21.text = diamondSutra
         diamondChapter21.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, never say that the Tathagata has the thought, 'I have spoken the Dharma'. Do not have that thought. And why is this? If someone says that the Tathagata has spoken the Dharma, then that person is defaming the Buddha, and he does not understand what I have been saying. Subhuti, when a person speaks the Dharma no Dharma can be spoken, and thus it is called speaking the Dharma.",
-                pinyin: "xū pú tí! rǔ wù wèi rú lái zuò shì niàn: wǒ dāng yǒu suǒ shuō fǎ. mò zuò shì niàn! hé yǐ gù? ruò rén yán: rú lái yǒu suǒ shuō fǎ, jí wéi bàng fó, bù néng jiě wǒ suǒ shuō gù. xū pú tí! shuō fǎ zhě, wú fǎ kě shuō, shì míng shuō fǎ",
-                chinese: "須菩提！汝勿謂如來作是念：我當有所說法。莫作是念！何以故？若人言：如來有所說法，即為謗佛，不能解我所說故。須菩提！說法者，無法可說，是名說法"
+                text: "'Subhuti, do not say that the Tathagata thinks: \"I must liberate sentient beings.\" Subhuti, do not think that. Why? There are really no sentient beings for the Tathagata to liberate. If there were sentient beings for the Tathagata to liberate, the Tathagata would be cherishing the idea of an ego-entity, a personality, a being, or a separated individuality.'",
+                pinyin: "'xū pú tí，rú lái bù yīng zuò shì niàn：wǒ dāng yǒu suǒ shuō fǎ。mò zuò shì niàn。hé yǐ gù？ruò rén yán rú lái yǒu suǒ shuō fǎ，jí wéi bàng fó，bù néng jiě wǒ suǒ shuō gù。",
+                chinese: "'須菩提，如來不應作是念：我當有所說法。莫作是念。何以故？若人言如來有所說法，即為謗佛，不能解我所說故。"
+            ),
+            Verse(
+                number: 2,
+                text: "'Subhuti, when the Tathagata speaks of \"liberating sentient beings,\" there are really no sentient beings to be liberated. That is why the Tathagata says, \"All sentient beings are liberated.\"'",
+                pinyin: "xū pú tí，shuō fǎ zhě，wú fǎ kě shuō，shì míng shuō fǎ。",
+                chinese: "須菩提，說法者，無法可說，是名說法。"
             )
         ]
         for verse in diamondChapter21.verses {
             verse.chapter = diamondChapter21
         }
         
-        // MARK: Diamond Sutra - Chapter 22: No Dharma to Attain
-        let diamondChapter22 = Chapter(number: 22, title: "No Dharma to Attain")
+        let diamondChapter22 = Chapter(number: 22, title: "Nothing Can Be Explained")
         diamondChapter22.text = diamondSutra
         diamondChapter22.verses = [
             Verse(
                 number: 1,
-                text: "Then the wise Subhuti said to the Buddha, \"World-honored One, will there ever be sentient beings in the future who, upon hearing this teaching, will believe it?\"",
-                pinyin: "ěr shí, huì mìng xū pú tí bái fó yán: shì zūn! pō yǒu zhòng shēng, yú wèi lái shì, wén shuō shì fǎ, shēng xìn xīn fǒu?",
-                chinese: "爾時，慧命須菩提白佛言：世尊！頗有眾生，於未來世，聞說是法，生信心不？"
+                text: "Then Subhuti said to the Buddha: 'World-Honored One, will there be any beings in the future who, when they hear this teaching, will believe it?' The Buddha said: 'Subhuti, they are neither beings nor non-beings. Why? Subhuti, \"beings,\" \"beings,\" the Tathagata says, are not really beings; they are just called \"beings.\"'",
+                pinyin: "ěr shí huì lì，xū pú tí bái fó yán：'shì zūn！fó dé ā nòu duō luó sān miǎo sān pú tí，wéi wú suǒ dé yē？'",
+                chinese: "爾時慧命，須菩提白佛言：'世尊！佛得阿耨多羅三藐三菩提，為無所得耶？"
             ),
             Verse(
                 number: 2,
-                text: "The Buddha said, \"Subhuti, those sentient beings are not sentient beings, and they are not not sentient beings. And why is this? Subhuti, the Tathagata has said that all sentient beings are not sentient beings, and that this is what is called sentient beings.\"",
-                pinyin: "fó yán: xū pú tí! bǐ fēi zhòng shēng, fēi bù zhòng shēng. hé yǐ gù? xū pú tí! zhòng shēng, zhòng shēng zhě, rú lái shuō fēi zhòng shēng, shì míng zhòng shēng",
-                chinese: "佛言：須菩提！彼非眾生，非不眾生。何以故？須菩提！眾生，眾生者，如來說非眾生，是名眾生"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti said to the Buddha, \"World-honored One, the Buddha attained anuttara samyaksambodhi, yet nothing was attained?\"",
-                pinyin: "xū pú tí bái fó yán: shì zūn! fó dé ā nòu duō luó sān miǎo sān pú tí, wéi wú suǒ dé yě?",
-                chinese: "須菩提白佛言：世尊！佛得阿耨多羅三藐三菩提，為無所得耶？"
-            ),
-            Verse(
-                number: 4,
-                text: "So it is, so it is, there is not even the slightest Dharma that can be attained in anuttara samyaksambodhi, and this is what is called anuttara samyaksambodhi.",
-                pinyin: "fó yán: rú shì, rú shì! xū pú tí! wǒ yú ā nòu duō luó sān miǎo sān pú tí, nǎi zhì wú yǒu shǎo fǎ kě dé, shì míng ā nòu duō luó sān miǎo sān pú tí",
-                chinese: "佛言：如是，如是！須菩提！我於阿耨多羅三藐三菩提，乃至無有少法可得，是名阿耨多羅三藐三菩提"
+                text: "'So it is, Subhuti. So it is. I have not obtained the highest, most fulfilled, awakened mind. Subhuti, if I had obtained the highest, most fulfilled, awakened mind, Burning Lamp Buddha would not have predicted, \"In your next life you will be a buddha named Shakyamuni.\" Since there is no such thing as the highest, most fulfilled, awakened mind, Burning Lamp Buddha made that prediction about me.'",
+                pinyin: "fó yán：'rú shì，rú shì！xū pú tí，wǒ yú ā nòu duō luó sān miǎo sān pú tí，nǎi zhì wú yǒu shǎo fǎ kě dé，shì míng ā nòu duō luó sān miǎo sān pú tí。",
+                chinese: "佛言：'如是，如是！須菩提，我於阿耨多羅三藐三菩提，乃至無有少法可得，是名阿耨多羅三藐三菩提。"
             )
         ]
         for verse in diamondChapter22.verses {
             verse.chapter = diamondChapter22
         }
         
-        // MARK: Diamond Sutra - Chapter 23: Perfect Equanimity
-        let diamondChapter23 = Chapter(number: 23, title: "Perfect Equanimity")
+        let diamondChapter23 = Chapter(number: 23, title: "The Pure Heart Practices Goodness")
         diamondChapter23.text = diamondSutra
         diamondChapter23.verses = [
             Verse(
                 number: 1,
-                text: "Furthermore, Subhuti, the Dharma is equal and without superiority or inferiority. This is called anuttara samyaksambodhi. Cultivate all wholesome teachings without self, without others, without sentient beings, and without longevity, and thus you will attain anuttara samyaksambodhi.",
-                pinyin: "fù cì: xū pú tí! shì fǎ píng děng, wú yǒu gāo xià, shì míng ā nòu duō luó sān miǎo sān pú tí. yǐ wú wǒ, wú rén, wú zhòng shēng, wú shòu zhě, xiū yī qiè shàn fǎ, jí dé ā nòu duō luó sān miǎo sān pú tí",
-                chinese: "復次：須菩提！是法平等，無有高下，是名阿耨多羅三藐三菩提。以無我、無人、無眾生、無壽者，修一切善法，即得阿耨多羅三藐三菩提"
+                text: "'Moreover, Subhuti, this is equal everywhere, without differentiation. It is called highest, most fulfilled, awakened mind. It is free from ego-entity, free from personality, free from being, and free from separated individuality. All wholesome dharmas are included in this teaching.'",
+                pinyin: "'fù cì，xū pú tí，shì fǎ píng děng，wú yǒu gāo xià，shì míng ā nòu duō luó sān miǎo sān pú tí。yǐ wú wǒ、wú rén、wú zhòng shēng、wú shòu zhě，xiū yī qiè shàn fǎ，jí dé ā nòu duō luó sān miǎo sān pú tí。",
+                chinese: "'復次，須菩提，是法平等，無有高下，是名阿耨多羅三藐三菩提。以無我、無人、無眾生、無壽者，修一切善法，即得阿耨多羅三藐三菩提。"
+            ),
+            Verse(
+                number: 2,
+                text: "'Subhuti, what are called \"wholesome dharmas\"? The Tathagata says they are not wholesome dharmas; they are just called \"wholesome dharmas.\"'",
+                pinyin: "xū pú tí，suǒ yán shàn fǎ zhě，rú lái shuō jí fēi shàn fǎ，shì míng shàn fǎ。",
+                chinese: "須菩提，所言善法者，如來說即非善法，是名善法。"
             )
         ]
         for verse in diamondChapter23.verses {
             verse.chapter = diamondChapter23
         }
         
-        // MARK: Diamond Sutra - Chapter 24: True Generosity Lies in Upholding This Sutra
-        let diamondChapter24 = Chapter(number: 24, title: "True Generosity Lies in Upholding This Sutra")
+        let diamondChapter24 = Chapter(number: 24, title: "The Incomparable Merit of This Teaching")
         diamondChapter24.text = diamondSutra
         diamondChapter24.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, suppose a person gives a quantity of the seven treasures equal to all the Sumeru mountains within a three thousandfold world system; if another person were to use this prajnaparamita sutra, even as few as four lines of verse, and receive, uphold, read, chant, and explain it to others, his merit would be one hundred times—nay, a hundred million, billion times, nay, an incalculable number of times that cannot even be suggested by metaphors—greater.",
-                pinyin: "xū pú tí! ruò sān qiān dà qiān shì jiè zhōng suǒ yǒu zhū xū mí shān, rú shì dé qī bǎo, yǒu rén chí yòng bù shī. ruò rén yǐ cǐ bō rě bō luó mì jīng, nǎi zhì sì jù jì děng, shòu chí dú sòng, wèi tā rén shuō, yú qián fú dé, bǎi fēn bù jí yī, bǎi qiān wàn yì fēn, nǎi zhì suàn shù pì yù suǒ bù néng jí",
-                chinese: "須菩提！若三千大千世界中所有諸須彌山，如是等七寶，有人持用布施。若人以此般若波羅蜜經，乃至四句偈等，受持讀誦，為他人說，於前福德，百分不及一，百千萬億分，乃至算數譬喻所不能及"
+                text: "'Subhuti, if there were as many Ganges rivers as the grains of sand in the great Ganges, and if there were as many buddha lands as grains of sand in all those Ganges rivers, and if someone filled all those buddha lands with the seven treasures and gave them all away in the practice of charity, and if a good man or good woman were to take from this teaching even only four lines and teach them to others, his or her merit would be greater than the merit of the one who gave those buddha lands filled with the seven treasures.'",
+                pinyin: "'xū pú tí，ruò sān qiān dà qiān shì jiè zhōng suǒ yǒu zhū xū mí shān wáng，rú shì dé qī bǎo mǎn ěr suǒ shù liàng，yǒu rén chí yòng bù shī。ruò rén yǐ cǐ jīng，nǎi zhì sì jù jì dé，shòu chí dú sòng，wéi tā rén shuō，yú qián fú dé，bǎi fēn bù jí yī，bǎi qiān wàn yì fēn，nǎi zhì suàn shù bǐ yù suǒ bù néng jí。",
+                chinese: "'須菩提，若三千大千世界中所有諸須彌山王，如是等七寶聚，有人持用布施。若人以此經，乃至四句偈等，受持讀誦，為他人說，於前福德，百分不及一，百千萬億分，乃至算數譬喻所不能及。"
             )
         ]
         for verse in diamondChapter24.verses {
             verse.chapter = diamondChapter24
         }
         
-        // MARK: Diamond Sutra - Chapter 25: Transforming That Which Cannot Be Transformed
-        let diamondChapter25 = Chapter(number: 25, title: "Transforming That Which Cannot Be Transformed")
+        let diamondChapter25 = Chapter(number: 25, title: "The Illusion of Ego")
         diamondChapter25.text = diamondSutra
         diamondChapter25.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? Do not say that the Tathagata has this thought: 'I should liberate sentient beings'. Subhuti, do not have this thought. And why is this? In reality, there are no sentient beings for the Tathagata to liberate. If there were sentient beings for the Tathagata to liberate, then the Tathagata would have a notion of self, others, sentient beings, and longevity.",
-                pinyin: "xū pú tí! yú yì yún hé? rǔ děng wù wèi rú lái zuò shì niàn: wǒ dāng duó zhòng shēng. xū pú tí! mò zuò shì niàn! hé yǐ gù? shí wú yǒu zhòng shēng rú lái duó zhě. ruò yǒu zhòng shēng rú lái duó zhě, rú lái jí yǒu wǒ, rén, zhòng shēng, shòu zhě",
-                chinese: "須菩提！於意云何？汝等勿謂如來作是念：我當度眾生。須菩提！莫作是念！何以故？實無有眾生如來度者。若有眾生如來度者，如來即有我、人、眾生、壽者"
+                text: "'Subhuti, what do you think? You should not think that the Tathagata thinks: \"I must liberate sentient beings.\" Subhuti, do not think that. Why? There are really no sentient beings for the Tathagata to liberate. If there were sentient beings for the Tathagata to liberate, the Tathagata would be cherishing the idea of an ego-entity, a personality, a being, or a separated individuality.'",
+                pinyin: "'xū pú tí，yú yì yún hé？rǔ děng wù wèi rú lái zuò shì niàn：wǒ dāng dù zhòng shēng。xū pú tí，mò zuò shì niàn。",
+                chinese: "'須菩提，於意云何？汝等勿謂如來作是念：我當度眾生。須菩提，莫作是念。"
             ),
             Verse(
                 number: 2,
-                text: "Subhuti, when the Tathagata speaks of a self, it is the same as no self, and yet all ordinary people take it as a self. Subhuti, the Tathagata says that ordinary people are not ordinary people, and that this is what is called ordinary people.",
-                pinyin: "xū pú tí! rú lái shuō yǒu wǒ zhě, jí fēi yǒu wǒ, ér fán fú zhī rén, yǐ wéi yǒu wǒ. xū pú tí! fán fú zhě, rú lái shuō jí fēi fán fú, shì míng fán fú",
-                chinese: "須菩提！如來說有我者，即非有我，而凡夫之人，以為有我。須菩提！凡夫者，如來說即非凡夫，是名凡夫"
+                text: "'Subhuti, when the Tathagata speaks of an \"ego-entity,\" there is really no ego-entity. The common people, however, think there is one. Subhuti, when the Tathagata speaks of \"common people,\" the Tathagata says they are not really common people; they are just called \"common people.\"'",
+                pinyin: "hé yǐ gù？shí wú yǒu zhòng shēng rú lái dù zhě。ruò yǒu zhòng shēng rú lái dù zhě，rú lái jí yǒu wǒ、rén、zhòng shēng、shòu zhě。",
+                chinese: "何以故？實無有眾生如來度者。若有眾生如來度者，如來即有我、人、眾生、壽者。"
             )
         ]
         for verse in diamondChapter25.verses {
             verse.chapter = diamondChapter25
         }
         
-        // MARK: Diamond Sutra - Chapter 26: The Dharma Body Is Without Notion
-        let diamondChapter26 = Chapter(number: 26, title: "The Dharma Body Is Without Notion")
+        let diamondChapter26 = Chapter(number: 26, title: "The Body of Truth Has No Marks")
         diamondChapter26.text = diamondSutra
         diamondChapter26.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, what do you think? Can the Tathagata be contemplated through his thirty-two marks or not?",
-                pinyin: "xū pú tí! yú yì yún hé? kě yǐ sān shí èr xiàng guān rú lái fǒu?",
-                chinese: "須菩提！於意云何？可以三十二相觀如來不？"
+                text: "'Subhuti, what do you think? Can the Tathagata be seen by means of his thirty-two marks?' Subhuti said: 'Yes, World-Honored One, the Tathagata can be seen by means of his thirty-two marks.'",
+                pinyin: "'xū pú tí，rú lái shuō wǒ jiàn、rén jiàn、zhòng shēng jiàn、shòu zhě jiàn，jí fēi wǒ jiàn、rén jiàn、zhòng shēng jiàn、shòu zhě jiàn，shì míng wǒ jiàn、rén jiàn、zhòng shēng jiàn、shòu zhě jiàn。",
+                chinese: "'須菩提，如來說我見、人見、眾生見、壽者見，即非我見、人見、眾生見、壽者見，是名我見、人見、眾生見、壽者見。"
             ),
             Verse(
                 number: 2,
-                text: "Subhuti said, \"So it is, so it is. The Tathagata can be contemplated through his thirty-two marks.\"",
-                pinyin: "xū pú tí yán: rú shì, rú shì! yǐ sān shí èr xiàng guān rú lái",
-                chinese: "須菩提言：如是，如是！以三十二相觀如來"
-            ),
-            Verse(
-                number: 3,
-                text: "The Buddha said, \"Subhuti, if the Tathagata could be contemplated through his thirty-two marks, then a wheel turning monarch would be the same as the Tathagata.\"",
-                pinyin: "fó yán: xū pú tí! ruò yǐ sān shí èr xiàng guān rú lái zhě, zhuàn lún shèng wáng jí shì rú lái",
-                chinese: "佛言：須菩提！若以三十二相觀如來者，轉輪聖王即是如來"
-            ),
-            Verse(
-                number: 4,
-                text: "Subhuti said to the Buddha, \"World-honored One, as far as I understand the meaning of what the Buddha has said, one should not contemplate the Tathagata by his thirty-two marks.\"",
-                pinyin: "xū pú tí bái fó yán: shì zūn! rú wǒ jiě fó suǒ shuō yì, bù yīng yǐ sān shí èr xiàng guān rú lái",
-                chinese: "須菩提白佛言：世尊！如我解佛所說義，不應以三十二相觀如來"
-            ),
-            Verse(
-                number: 5,
-                text: "At that time, the World-honored One spoke this verse: If anyone should think that I can be seen among forms, Or that I can be sought among sounds, Then that person is on the wrong path And he will not see the Tathagata.",
-                pinyin: "ěr shí, shì zūn ér shuō jì yán: ruò yǐ sè jiàn wǒ, yǐ yīn shēng qiú wǒ, shì rén xíng xié dào, bù néng jiàn rú lái",
-                chinese: "爾時，世尊而說偈言：若以色見我，以音聲求我，是人行邪道，不能見如來"
+                text: "The Buddha said: 'Subhuti, if the Tathagata could be seen by means of his thirty-two marks, a universal monarch would be a Tathagata.'",
+                pinyin: "'xū pú tí，fā ā nòu duō luó sān miǎo sān pú tí xīn zhě，yú yī qiè fǎ，yīng rú shì zhī，rú shì jiàn，rú shì xìn jiě，bù shēng fǎ xiàng。",
+                chinese: "'須菩提，發阿耨多羅三藐三菩提心者，於一切法，應如是知，如是見，如是信解，不生法相。"
             )
         ]
         for verse in diamondChapter26.verses {
             verse.chapter = diamondChapter26
         }
         
-        // MARK: Diamond Sutra - Chapter 27: Nothing Is Ended and Nothing Is Extinguished
-        let diamondChapter27 = Chapter(number: 27, title: "Nothing Is Ended and Nothing Is Extinguished")
+        let diamondChapter27 = Chapter(number: 27, title: "No Truth to Teach")
         diamondChapter27.text = diamondSutra
         diamondChapter27.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, suppose you had this thought: 'It is not because his marks are complete that the Tathagata attains anuttara samyaksambodhi.' Subhuti, do not have this thought, 'It is not because his marks are complete that the Tathagata attains anuttara samyaksambodhi.'",
-                pinyin: "xū pú tí! rǔ ruò zuò shì niàn: rú lái bù yǐ jù zú xiàng gù, dé ā nòu duō luó sān miǎo sān pú tí. xū pú tí! mò zuò shì niàn: rú lái bù yǐ jù zú xiàng gù, dé ā nòu duō luó sān miǎo sān pú tí",
-                chinese: "須菩提！汝若作是念：如來不以具足相故，得阿耨多羅三藐三菩提。須菩提！莫作是念：如來不以具足相故，得阿耨多羅三藐三菩提"
-            ),
-            Verse(
-                number: 2,
-                text: "Subhuti, suppose you had this thought: 'Those who initiate the mind of anuttara samyaksambodhi advocate the Dharma of annihilation.' Do not have this thought. And why is this? Those who initiate the mind of anuttara samyaksambodhi, in regards to the Dharma, do not advocate the notions of annihilation.",
-                pinyin: "xū pú tí! rǔ ruò zuò shì niàn: fā ā nòu duō luó sān miǎo sān pú tí xīn zhě, shuō zhū fǎ duàn miè. mò zuò shì niàn! hé yǐ gù? fā ā nòu duō luó sān miǎo sān pú tí xīn zhě, yú fǎ bù shuō duàn miè xiàng",
-                chinese: "須菩提！汝若作是念：發阿耨多羅三藐三菩提心者，說諸法斷滅。莫作是念！何以故？發阿耨多羅三藐三菩提心者，於法不說斷滅相"
+                text: "'Subhuti, if someone says the Tathagata comes or goes, sits or lies down, that person does not understand the meaning of my teaching. Why? The Tathagata has no place to come from and no place to go to. That is why he is called the Tathagata.'",
+                pinyin: "xū pú tí，suǒ yán fǎ xiàng zhě，jí fēi fǎ xiàng，shì míng fǎ xiàng。",
+                chinese: "須菩提，所言法相者，即非法相，是名法相。"
             )
         ]
         for verse in diamondChapter27.verses {
             verse.chapter = diamondChapter27
         }
         
-        // MARK: Diamond Sutra - Chapter 28: Not Receiving and Not Wanting to Receive
-        let diamondChapter28 = Chapter(number: 28, title: "Not Receiving and Not Wanting to Receive")
+        let diamondChapter28 = Chapter(number: 28, title: "No One Is Liberated")
         diamondChapter28.text = diamondSutra
         diamondChapter28.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, suppose a bodhisattva gave a quantity of the seven treasures capable of filling as many worlds as there are grains of sand in the Ganges River; if a bodhisattva knows that all phenomena are without self and thereby attains patience, the virtue he attains is superior. Subhuti, this is because all bodhisattvas do not receive this merit.",
-                pinyin: "xū pú tí! ruò pú sà yǐ mǎn héng hé shā déng shì jiè qī bǎo chí yòng bù shī. ruò pú sà zhī yī qiè fǎ wú wǒ, dé chéng yú rěn rǔ, cǐ pú sà shèng qián pú sà suǒ dé gōng dé. hé yǐ gù? xū pú tí! yǐ zhū pú sà bù shòu fú dé gù",
-                chinese: "須菩提！若菩薩以滿恆河沙等世界七寶持用布施。若菩薩知一切法無我，得成於忍，此菩薩勝前菩薩所得功德。何以故？須菩提！以諸菩薩不受福德故"
+                text: "'Subhuti, if a bodhisattva were to fill immeasurable, innumerable worlds with the seven treasures and give them all away in the practice of charity, and if a good man or good woman were to take from this teaching even only four lines and teach them to others, the merit of the good man or good woman would be greater than the merit of the bodhisattva. Why? Subhuti, all buddhas and their highest, most fulfilled, most awakened teachings issue from this teaching.'",
+                pinyin: "'xū pú tí，ruò pú sà yǐ mǎn héng hé shā déng shì jiè qī bǎo chí yòng bù shī。ruò fù yǒu rén，zhī yī qiè fǎ wú wǒ，dé chéng yú rěn，cǐ pú sà shèng qián pú sà suǒ dé gōng dé。",
+                chinese: "'須菩提，若菩薩以滿恆河沙等世界七寶持用布施。若復有人，知一切法無我，得成於忍，此菩薩勝前菩薩所得功德。"
             ),
             Verse(
                 number: 2,
-                text: "Subhuti said to the Buddha, \"World-honored One, why is it that bodhisattvas do not receive merit?\"",
-                pinyin: "xū pú tí bái fó yán: shì zūn! yún hé pú sà bù shòu fú dé?",
-                chinese: "須菩提白佛言：世尊！云何菩薩不受福德？"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, the merit of a bodhisattva should not be attached to. That is why it is said that they do not receive merit.",
-                pinyin: "xū pú tí! pú sà suǒ zuò fú dé, bù yīng tān zhuó, shì gù shuō: bù shòu fú dé",
-                chinese: "須菩提！菩薩所作福德，不應貪著，是故說：不受福德"
+                text: "'Subhuti, why? Because bodhisattvas do not receive merit.' Subhuti said: 'World-Honored One, how do bodhisattvas not receive merit?'",
+                pinyin: "'hé yǐ gù？xū pú tí，yǐ zhū pú sà bù shòu fú dé gù。' xū pú tí bái fó yán：'shì zūn！yún hé pú sà bù shòu fú dé？",
+                chinese: "'何以故？須菩提，以諸菩薩不受福德故。' 須菩提白佛言：'世尊！云何菩薩不受福德？"
             )
         ]
         for verse in diamondChapter28.verses {
             verse.chapter = diamondChapter28
         }
         
-        // MARK: Diamond Sutra - Chapter 29: Awesome Tranquility
-        let diamondChapter29 = Chapter(number: 29, title: "Awesome Tranquility")
+        let diamondChapter29 = Chapter(number: 29, title: "The Illusion of Appearance")
         diamondChapter29.text = diamondSutra
         diamondChapter29.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, if someone says, 'Tathagata means \"thus come,\" does he come? Does he go? Does he sit? Does he lie down?' then this person has not understood my meaning. And why is this? The Tathagata has not come from anywhere, and he does not go anywhere, and that is why he is called the Tathagata.",
-                pinyin: "xū pú tí! ruò yǒu rén yán: rú lái ruò lái, ruò qù, ruò zuò, ruò wò, shì rén bù jiě wǒ suǒ shuō yì. hé yǐ gù? rú lái zhě, wú suǒ cóng lái, yì wú suǒ qù, gù míng rú lái",
-                chinese: "須菩提！若有人言：如來若來、若去；若坐、若臥，是人不解我所說義。何以故？如來者，無所從來，亦無所去，故名如來"
+                text: "'Subhuti, if someone says the Tathagata comes or goes, sits or lies down, that person does not understand the meaning of my teaching. Why? The Tathagata has no place to come from and no place to go to. That is why he is called the Tathagata.'",
+                pinyin: "'xū pú tí，ruò yǒu rén yán：rú lái ruò lái ruò qù，ruò zuò ruò wò，shì rén bù jiě wǒ suǒ shuō yì。",
+                chinese: "'須菩提，若有人言：如來若來若去，若坐若臥，是人不解我所說義。"
+            ),
+            Verse(
+                number: 2,
+                text: "'Subhuti, what is called the Tathagata? The Tathagata is the suchness of all dharmas. If someone says the Tathagata comes or goes, that person does not understand the meaning of my teaching.'",
+                pinyin: "hé yǐ gù？rú lái zhě，wú suǒ cóng lái，yì wú suǒ qù，gù míng rú lái。",
+                chinese: "何以故？如來者，無所從來，亦無所去，故名如來。"
             )
         ]
         for verse in diamondChapter29.verses {
             verse.chapter = diamondChapter29
         }
         
-        // MARK: Diamond Sutra - Chapter 30: Compound Notions
-        let diamondChapter30 = Chapter(number: 30, title: "Compound Notions")
+        let diamondChapter30 = Chapter(number: 30, title: "The Integral Principle")
         diamondChapter30.text = diamondSutra
         diamondChapter30.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, if a good man or a good woman were to pulverize a three thousandfold world system into fine dust, what do you think, would that collection of fine dust be a lot or not?",
-                pinyin: "xū pú tí! ruò shàn nán zǐ, shàn nǚ rén, yǐ sān qiān dà qiān shì jiè suì wéi wēi chén, yú yì yún hé? shì wēi chén zhòng, níng wéi duō fǒu?",
-                chinese: "須菩提！若善男子、善女人，以三千大千世界碎為微塵，於意云何？是微塵眾，寧為多不？"
+                text: "'Subhuti, if a good man or good woman were to take from this teaching even only four lines and teach them to others, his or her merit would be greater than the merit of one who gave immeasurable, innumerable worlds filled with the seven treasures. Why? Because, Subhuti, all buddhas and their highest, most fulfilled, most awakened teachings issue from this teaching.'",
+                pinyin: "'xū pú tí，ruò shàn nán zǐ、shàn nǚ rén，yǐ sān qiān dà qiān shì jiè suì wéi wēi chén，yú yì yún hé？shì wēi chén duō fǒu？'",
+                chinese: "'須菩提，若善男子、善女人，以三千大千世界碎為微塵，於意云何？是微塵多否？"
             ),
             Verse(
                 number: 2,
-                text: "It would be a lot, World-honored One. And why is this? If that collection of fine dust were something that really existed, the Buddha would not have called it a collection of fine dust. And why is this? The Buddha has said that a collection of fine dust is not a collection of fine dust and so it is called a collection of fine dust.",
-                pinyin: "shèn duō, shì zūn! hé yǐ gù? ruò shì wēi chén zhòng shí yǒu zhě, fó jí bù shuō shì wēi chén zhòng. hé yǐ gù? fó shuō wēi chén zhòng, jí fēi wēi chén zhòng, shì míng wēi chén zhòng",
-                chinese: "甚多，世尊！何以故？若是微塵眾實有者，佛即不說微塵眾。何以故？佛說微塵眾，即非微塵眾，是名微塵眾"
-            ),
-            Verse(
-                number: 3,
-                text: "World-honored One, the three thousandfold world system the Tathagata has spoken about is not a three thousandfold world system and that is what is called a three thousandfold world system. And why is this? If that world really existed, then it would be a unified form. The Tathagata has said that a unified form is not a unified form, and so it is called a unified form.",
-                pinyin: "shì zūn! rú lái suǒ shuō sān qiān dà qiān shì jiè, jí fēi shì jiè, shì míng shì jiè. hé yǐ gù? ruò shì jiè shí yǒu zhě, jí shì yī hé xiàng. rú lái shuō yī hé xiàng, jí fēi yī hé xiàng, shì míng yī hé xiàng",
-                chinese: "世尊！如來所說三千大千世界，即非世界，是名世界。何以故？若世界實有者，即是一合相。如來說一合相，即非一合相，是名一合相"
-            ),
-            Verse(
-                number: 4,
-                text: "Subhuti, that which is a unified form cannot really be spoken about, and yet ordinary people are attached to it.",
-                pinyin: "xū pú tí! yī hé xiàng zhě, jí shì bù kě shuō, dàn fán fú zhī rén, tān zhuó qí shì",
-                chinese: "須菩提！一合相者，即是不可說，但凡夫之人，貪著其事"
+                text: "'Subhuti said: 'Very many, World-Honored One. Why? If those particles of dust really existed, the Buddha would not have called them particles of dust. The Buddha says particles of dust are not really particles of dust; they are just called particles of dust.'",
+                pinyin: "'shèn duō，shì zūn！hé yǐ gù？ruò shì wēi chén jí shí yǒu zhě，fó jí bù shuō shì wēi chén。",
+                chinese: "'甚多，世尊！何以故？若是微塵實有者，佛即不說微塵。"
             )
         ]
         for verse in diamondChapter30.verses {
             verse.chapter = diamondChapter30
         }
         
-        // MARK: Diamond Sutra - Chapter 31: Not Giving Rise to Belief in Notions
-        let diamondChapter31 = Chapter(number: 31, title: "Not Giving Rise to Belief in Notions")
+        let diamondChapter31 = Chapter(number: 31, title: "No Conceptualizing Truth")
         diamondChapter31.text = diamondSutra
         diamondChapter31.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, if a person were to say, 'The Tathagata teaches a view of self, a view of others, a view of sentient beings, and a view of longevity', Subhuti, what do you think, has this person understood the meaning of what I am saying?",
-                pinyin: "xū pú tí! ruò rén yán: fó shuō wǒ jiàn, rén jiàn, zhòng shēng jiàn, shòu zhě jiàn. xū pú tí! yú yì yún hé? shì rén jiě wǒ suǒ shuō yì fǒu?",
-                chinese: "須菩提！若人言：佛說我見、人見、眾生見、壽者見。須菩提！於意云何？是人解我所說義不？"
+                text: "'Subhuti, if someone says the Buddha speaks of the view of a self, the view of a person, the view of beings, or the view of a life, Subhuti, does that person understand the meaning of my teaching?'",
+                pinyin: "'xū pú tí，ruò rén yán：fó shuō wǒ jiàn、rén jiàn、zhòng shēng jiàn、shòu zhě jiàn。xū pú tí，yú yì yún hé？shì rén jiě wǒ suǒ shuō yì fǒu？",
+                chinese: "'須菩提，若人言：佛說我見、人見、眾生見、壽者見。須菩提，於意云何？是人解我所說義否？"
             ),
             Verse(
                 number: 2,
-                text: "No, World-honored One. This person has not understood the meaning of what the Tathagata is saying. And why is this? The World-honored One has said that a view of self, a view of others, a view of sentient beings, and a view of longevity is not a view of self, a view of others, a view of sentient beings, and a view of longevity, and so it is called a view of self, a view of others, a view of sentient beings, and a view of longevity.",
-                pinyin: "bù yě, shì zūn! shì rén bù jiě rú lái suǒ shuō yì. hé yǐ gù? shì zūn shuō wǒ jiàn, rén jiàn, zhòng shēng jiàn, shòu zhě jiàn, jí fēi wǒ jiàn, rén jiàn, zhòng shēng jiàn, shòu zhě jiàn, shì míng wǒ jiàn, rén jiàn, zhòng shēng jiàn, shòu zhě jiàn",
-                chinese: "不也，世尊！是人不解如來所說義。何以故？世尊說我見、人見、眾生見、壽者見，即非我見、人見、眾生見、壽者見，是名我見、人見、眾生見、壽者見"
-            ),
-            Verse(
-                number: 3,
-                text: "Subhuti, one who initiates the mind of anuttara samyaksambodhi should not give rise to the notion of phenomena. He should know all phenomena in this way; he should know and view them like this, and believe and understand them like this. Subhuti, the Tathagata says that that which is called a notion of phenomena is not a notion of phenomena, and so it is called a notion of phenomena.",
-                pinyin: "xū pú tí! fā ā nòu duō luó sān miǎo sān pú tí xīn zhě, yú yī qiè fǎ, yīng rú shì zhī, rú shì jiàn, rú shì xìn jiě, bù shēng fǎ xiàng. xū pú tí! suǒ yán fǎ xiàng zhě, rú lái shuō jí fēi fǎ xiàng, shì míng fǎ xiàng",
-                chinese: "須菩提！發阿耨多羅三藐三菩提心者，於一切法，應如是知、如是見、如是信解，不生法相。須菩提！所言法相者，如來說即非法相，是名法相"
+                text: "'No, World-Honored One, that person does not understand the meaning of the Tathagata's teaching. Why? When the Buddha speaks of the view of a self, the view of a person, the view of beings, or the view of a life, the Tathagata is not speaking of the view of a self, the view of a person, the view of beings, or the view of a life. They are just called the view of a self, the view of a person, the view of beings, and the view of a life.'",
+                pinyin: "'fǒu yě，shì zūn！shì rén bù jiě rú lái suǒ shuō yì。",
+                chinese: "'否也，世尊！是人不解如來所說義。"
             )
         ]
         for verse in diamondChapter31.verses {
             verse.chapter = diamondChapter31
         }
         
-        // MARK: Diamond Sutra - Chapter 32: Like Shadows, Like Bubbles, Like Dreams
-        let diamondChapter32 = Chapter(number: 32, title: "Like Shadows, Like Bubbles, Like Dreams")
+        let diamondChapter32 = Chapter(number: 32, title: "The Delusion of Appearances")
         diamondChapter32.text = diamondSutra
         diamondChapter32.verses = [
             Verse(
                 number: 1,
-                text: "Subhuti, suppose a person were to give a quantity of the seven treasures capable of filling infinite asamkhya worlds, if a good man or good woman were to initiate the bodhisattva mind and use this sutra, even as few as four lines of verse from it, and were to receive, uphold, read, chant, and explain it to others, his merit is greater. And how should this sutra be taught to people? By not grasping to notions and being unmoved by things as they are. And why is this?",
-                pinyin: "xū pú tí! ruò yǒu rén yǐ mǎn wú liàng ā sēng qí shì jiè qī bǎo, chí yòng bù shī. ruò yǒu shàn nán zǐ, shàn nǚ rén, fā pú tí xīn zhě, chí yú cǐ jīng, nǎi zhì sì jù jì děng, shòu chí dú sòng, wèi rén yǎn shuō, qí fú shèng bǐ. yún hé wèi rén yǎn shuō? bù qǔ yú xiàng, rú rú bù dòng. hé yǐ gù?",
-                chinese: "須菩提！若有人以滿無量阿僧祇世界七寶，持用布施。若有善男子、善女人，發菩提心者，持於此經，乃至四句偈等，受持讀誦，為人演說，其福勝彼。云何為人演說？不取於相，如如不動。何以故？"
+                text: "'Subhuti, if someone were to fill immeasurable, innumerable worlds with the seven treasures and give them all away in the practice of charity, and if a good man or good woman were to resolve their mind on highest, most fulfilled, awakened mind and take from this teaching even only four lines, memorize them, accept them, hold them, recite them, and explain them to others, his or her merit would be immeasurably, infinitely greater.'",
+                pinyin: "'xū pú tí，ruò yǒu rén yǐ mǎn wú liàng ā sēng qí shì jiè qī bǎo chí yòng bù shī。ruò fù yǒu shàn nán zǐ、shàn nǚ rén，fā pú tí xīn zhě，chí yú cǐ jīng，nǎi zhì sì jù jì dé，shòu chí dú sòng，wéi rén guǎng shuō，cǐ rén fú dé，shèng qián fú dé。",
+                chinese: "'須菩提，若有人以滿無量阿僧祇世界七寶持用布施。若復有善男子、善女人，發菩提心者，持於此經，乃至四句偈等，受持讀誦，為人廣說，此人福德，勝前福德。"
             ),
             Verse(
                 number: 2,
-                text: "All conditioned phenomena Are like dreams, illusions, bubbles, and shadows, Like dew and lightning. One should contemplate them in this way.",
-                pinyin: "yī qiè yǒu wéi fǎ, rú mèng, huàn, pào, yǐng, rú lù, yì rú diàn, yīng zuò rú shì guān",
-                chinese: "一切有為法，如夢、幻、泡、影，如露，亦如電，應作如是觀"
+                text: "'In what way should they explain them? By not grasping at appearances, abiding serenely. Why? All conditioned dharmas are like dreams, like illusions, like bubbles, like shadows, like dewdrops, like lightning. You should contemplate them thus.'",
+                pinyin: "'hé yǐ gù？xū pú tí，yī qiè yǒu wéi fǎ，rú mèng huàn pào yǐng，rú lù yì rú diàn，yīng zuò rú shì guān。",
+                chinese: "'何以故？須菩提，一切有為法，如夢幻泡影，如露亦如電，應作如是觀。"
             ),
             Verse(
                 number: 3,
-                text: "When the Buddha finished speaking this sutra, the elder Subhuti, along with all the bhiksus, bhiksunis, upasakas, upasikas, asuras, and worldly and celestial beings, heard what the Buddha had said, and all of them were greatly pleased, and they all believed it, received it, and practiced it.",
-                pinyin: "fó shuō shì jīng yǐ, zhǎng lǎo xū pú tí, jí zhū bǐ qiū, bǐ qiū ní, yōu pó sāi, yōu pó yí, yī qiè shì jiān tiān, rén, ā xiū luó, wén fó suǒ shuō, jiē dà huān xǐ, xìn shòu fèng xíng",
-                chinese: "佛說是經已，長老須菩提，及諸比丘、比丘尼、優婆塞、優婆夷，一切世間天、人、阿修羅，聞佛所說，皆大歡喜，信受奉行"
+                text: "When the Buddha finished speaking this sutra, the elder Subhuti, together with the bhikkhus, bhikkhunis, laymen, laywomen, and all the heavenly beings, humans, and asuras who had listened to his teaching, were filled with joy and faithfully accepted it.",
+                pinyin: "fó shuō shì jīng yǐ，zháng lǎo xū pú tí，jí zhū bǐ qiū、bǐ qiū ní、yōu pó sāi、yōu pó yí，yī qiè shì jiān、tiān、rén、ā xiū luó，wén fó suǒ shuō，jiē dà huān xǐ，xìn shòu fèng xíng。",
+                chinese: "佛說是經已，長老須菩提，及諸比丘、比丘尼、優婆塞、優婆夷，一切世間、天、人、阿修羅，聞佛所說，皆大歡喜，信受奉行。"
             )
         ]
         for verse in diamondChapter32.verses {
             verse.chapter = diamondChapter32
         }
         
-        // MARK: Diamond Sutra - Triple Refuge
-        let diamondTripleRefuge = Chapter(number: 33, title: "Triple Refuge")
-        diamondTripleRefuge.text = diamondSutra
-        diamondTripleRefuge.verses = [
-            Verse(
-                number: 1,
-                text: "I take refuge in the Buddha, wishing that all sentient beings understand the Dharma and make the supreme vow.",
-                pinyin: "zì guī yī fó, dāng yuàn zhòng shēng, tǐ jiě dà dào, fā wú shàng xīn",
-                chinese: "自皈依佛，當願眾生，體解大道，發無上心"
-            ),
-            Verse(
-                number: 2,
-                text: "I take refuge in the Dharma, wishing that all sentient beings study the sutras diligently and obtain an ocean of wisdom.",
-                pinyin: "zì guī yī fǎ, dāng yuàn zhòng shēng, shēn rù jīng zàng, zhì huì rú hǎi",
-                chinese: "自皈依法，當願眾生，深入經藏，智慧如海"
-            ),
-            Verse(
-                number: 3,
-                text: "I take refuge in the Sangha, wishing that all sentient beings lead the masses in harmony without obstruction.",
-                pinyin: "zì guī yī sēng, dāng yuàn zhòng shēng, tǒng lǐ dà zhòng, yī qiè wú ài",
-                chinese: "自皈依僧，當願眾生，統理大眾，一切無礙"
-            )
-        ]
-        for verse in diamondTripleRefuge.verses {
-            verse.chapter = diamondTripleRefuge
-        }
-        
-        // MARK: Diamond Sutra - Dedication of Merit
-        let diamondDedication = Chapter(number: 34, title: "Dedication of Merit")
-        diamondDedication.text = diamondSutra
-        diamondDedication.verses = [
-            Verse(
-                number: 1,
-                text: "May kindness, compassion, joy, and equanimity pervade the dharma realms;",
-                pinyin: "cí bēi xǐ shě biàn fǎ jiè",
-                chinese: "慈悲喜捨遍法界"
-            ),
-            Verse(
-                number: 2,
-                text: "May all people and heavenly beings benefit from our blessings and friendship;",
-                pinyin: "xī fú jié yuán lì rén tiān",
-                chinese: "惜福結緣利人天"
-            ),
-            Verse(
-                number: 3,
-                text: "May our ethical practice of Chan, Pure Land, and Precepts help us to realize equality and patience;",
-                pinyin: "chán jìng jiè hèng píng děng rěn",
-                chinese: "禪淨戒行平等忍"
-            ),
-            Verse(
-                number: 4,
-                text: "May we undertake the great vows with humility and gratitude.",
-                pinyin: "cán kuì gǎn ēn dà yuàn xīn",
-                chinese: "慚愧感恩大願心"
-            )
-        ]
-        for verse in diamondDedication.verses {
-            verse.chapter = diamondDedication
-        }
-        
-        diamondSutra.chapters.append(contentsOf: [diamondChapter1, diamondChapter2, diamondChapter3, diamondChapter4, diamondChapter5, diamondChapter6, diamondChapter7, diamondChapter8, diamondChapter9, diamondChapter10, diamondChapter11, diamondChapter12, diamondChapter13, diamondChapter14, diamondChapter15, diamondChapter16, diamondChapter17, diamondChapter18, diamondChapter19, diamondChapter20, diamondChapter21, diamondChapter22, diamondChapter23, diamondChapter24, diamondChapter25, diamondChapter26, diamondChapter27, diamondChapter28, diamondChapter29, diamondChapter30, diamondChapter31, diamondChapter32, diamondTripleRefuge, diamondDedication])
+        diamondSutra.chapters.append(contentsOf: [diamondChapter1, diamondChapter2, diamondChapter3, diamondChapter4, diamondChapter5, diamondChapter6, diamondChapter7, diamondChapter8, diamondChapter9, diamondChapter10, diamondChapter11, diamondChapter12, diamondChapter13, diamondChapter14, diamondChapter15, diamondChapter16, diamondChapter17, diamondChapter18, diamondChapter19, diamondChapter20, diamondChapter21, diamondChapter22, diamondChapter23, diamondChapter24, diamondChapter25, diamondChapter26, diamondChapter27, diamondChapter28, diamondChapter29, diamondChapter30, diamondChapter31, diamondChapter32])
         context.insert(diamondSutra)
         }
         
-        // MARK: - Four Noble Truths
-        if shouldLoadFourNobleTruths {
-        let fourNobleTruths = BuddhistText(
-            title: "The Four Noble Truths",
-            author: "Buddha",
-            textDescription: "The foundation of Buddhist teaching",
-            category: "Teaching"
-        )
-        
-        let truthChapter1 = Chapter(number: 1, title: "The Truth of Suffering")
-        truthChapter1.text = fourNobleTruths
-        truthChapter1.verses = [
-            Verse(number: 1, text: "Now this, monks, is the noble truth of suffering: Birth is suffering, aging is suffering, death is suffering; sorrow, lamentation, pain, grief, and despair are suffering; association with the unbeloved is suffering; separation from the loved is suffering; not getting what is wanted is suffering."),
-            Verse(number: 2, text: "In short, the five clinging-aggregates are suffering.")
-        ]
-        for verse in truthChapter1.verses {
-            verse.chapter = truthChapter1
-        }
-        
-        let truthChapter2 = Chapter(number: 2, title: "The Truth of the Origin of Suffering")
-        truthChapter2.text = fourNobleTruths
-        truthChapter2.verses = [
-            Verse(number: 1, text: "Now this, monks, is the noble truth of the origin of suffering: It is craving which produces renewal of being, is accompanied by delight and lust, and delights in this and that; that is, craving for sensual pleasures, craving for being, and craving for non-being.")
-        ]
-        for verse in truthChapter2.verses {
-            verse.chapter = truthChapter2
-        }
-        
-        let truthChapter3 = Chapter(number: 3, title: "The Truth of the Cessation of Suffering")
-        truthChapter3.text = fourNobleTruths
-        truthChapter3.verses = [
-            Verse(number: 1, text: "Now this, monks, is the noble truth of the cessation of suffering: It is the remainderless fading away and ceasing, the giving up, relinquishing, letting go, and rejecting of that same craving.")
-        ]
-        for verse in truthChapter3.verses {
-            verse.chapter = truthChapter3
-        }
-        
-        let truthChapter4 = Chapter(number: 4, title: "The Truth of the Path to the Cessation of Suffering")
-        truthChapter4.text = fourNobleTruths
-        truthChapter4.verses = [
-            Verse(number: 1, text: "Now this, monks, is the noble truth of the way leading to the cessation of suffering: It is this Noble Eightfold Path; that is, right view, right intention, right speech, right action, right livelihood, right effort, right mindfulness, right concentration.")
-        ]
-        for verse in truthChapter4.verses {
-            verse.chapter = truthChapter4
-        }
-        
-        fourNobleTruths.chapters.append(contentsOf: [truthChapter1, truthChapter2, truthChapter3, truthChapter4])
-        context.insert(fourNobleTruths)
-        }
-        
-        // MARK: - Eightfold Path
-        if shouldLoadEightfoldPath {
-        let eightfoldPath = BuddhistText(
-            title: "The Noble Eightfold Path",
-            author: "Buddha",
-            textDescription: "The path to the end of suffering",
-            category: "Teaching"
-        )
-        
-        let pathChapter1 = Chapter(number: 1, title: "Wisdom")
-        pathChapter1.text = eightfoldPath
-        pathChapter1.verses = [
-            Verse(number: 1, text: "Right View: Understanding the Four Noble Truths, karma, and the nature of reality."),
-            Verse(number: 2, text: "Right Intention: The intention of renunciation, freedom from ill will, and harmlessness.")
-        ]
-        for verse in pathChapter1.verses {
-            verse.chapter = pathChapter1
-        }
-        
-        let pathChapter2 = Chapter(number: 2, title: "Ethical Conduct")
-        pathChapter2.text = eightfoldPath
-        pathChapter2.verses = [
-            Verse(number: 1, text: "Right Speech: Abstaining from false speech, malicious speech, harsh speech, and idle chatter."),
-            Verse(number: 2, text: "Right Action: Abstaining from taking life, from stealing, and from sexual misconduct."),
-            Verse(number: 3, text: "Right Livelihood: Abstaining from trades that directly or indirectly harm others.")
-        ]
-        for verse in pathChapter2.verses {
-            verse.chapter = pathChapter2
-        }
-        
-        let pathChapter3 = Chapter(number: 3, title: "Mental Discipline")
-        pathChapter3.text = eightfoldPath
-        pathChapter3.verses = [
-            Verse(number: 1, text: "Right Effort: The effort to prevent unwholesome states from arising, to abandon unwholesome states that have arisen, to arouse wholesome states that have not arisen, and to maintain wholesome states that have arisen."),
-            Verse(number: 2, text: "Right Mindfulness: Mindfulness of the body, feelings, mind, and mental objects."),
-            Verse(number: 3, text: "Right Concentration: The development of the jhanas, states of deep meditative absorption.")
-        ]
-        for verse in pathChapter3.verses {
-            verse.chapter = pathChapter3
-        }
-        
-        eightfoldPath.chapters.append(contentsOf: [pathChapter1, pathChapter2, pathChapter3])
-        context.insert(eightfoldPath)
-        }
-        
-        // MARK: - Samadhi Water Repentance
+        // Samadhi Water Repentance of Kindness and Compassion
         if shouldLoadWaterRepentance {
         let waterRepentance = BuddhistText(
             title: "Samadhi Water Repentance (慈悲三昧水懺科儀)",
             author: "Master Wuda",
             textDescription: "Liturgy of the Samadhi Water Repentance of Kindness and Compassion - Scroll One",
-            category: "Liturgy"
+            category: "Liturgy",
+            coverImageName: "SamadhiWaterRepentance"
         )
         
-        // MARK: Water Repentance - Chapter 1: True Incense of Precepts and Concentration
         let waterChapter1 = Chapter(number: 1, title: "True Incense of Precepts and Concentration")
         waterChapter1.text = waterRepentance
         waterChapter1.verses = [
@@ -1479,7 +921,6 @@ class DataService {
             verse.chapter = waterChapter1
         }
         
-        // MARK: Water Repentance - Chapter 2: Prologue and Background
         let waterChapter2 = Chapter(number: 2, title: "Prologue and Background")
         waterChapter2.text = waterRepentance
         waterChapter2.verses = [
@@ -1656,7 +1097,6 @@ class DataService {
             verse.chapter = waterChapter2
         }
         
-        // MARK: Water Repentance - Chapter 3: Entering Repentance
         let waterChapter3 = Chapter(number: 3, title: "Entering Repentance")
         waterChapter3.text = waterRepentance
         waterChapter3.verses = [
@@ -2403,7 +1843,6 @@ class DataService {
             verse.chapter = waterChapter3
         }
         
-        // MARK: Water Repentance - Chapter 4: The Seven Kinds of Mind
         let waterChapter4 = Chapter(number: 4, title: "The Seven Kinds of Mind")
         waterChapter4.text = waterRepentance
         waterChapter4.verses = [
@@ -2874,7 +2313,6 @@ class DataService {
             verse.chapter = waterChapter4
         }
         
-        // MARK: Water Repentance - Chapter 5: Repentance of Afflictions
         let waterChapter5 = Chapter(number: 5, title: "Repentance of Afflictions")
         waterChapter5.text = waterRepentance
         waterChapter5.verses = [
@@ -4029,7 +3467,6 @@ class DataService {
             verse.chapter = waterChapter5
         }
         
-        // MARK: Water Repentance - Chapter 6: Closing and Dedication
         let waterChapter6 = Chapter(number: 6, title: "Closing and Dedication")
         waterChapter6.text = waterRepentance
         waterChapter6.verses = [
@@ -4272,475 +3709,2452 @@ class DataService {
             verse.chapter = waterChapter6
         }
         
-        // MARK: Water Repentance - Chapter 7: Noon Offering Before the Buddhas
-        let waterChapter7 = Chapter(number: 7, title: "Noon Offering Before the Buddhas")
-        waterChapter7.text = waterRepentance
-        waterChapter7.verses = [
-            Verse(
-                number: 0,
-                text: "【佛前上供】",
-                pinyin: "fó qián shàng gòng",
-                chinese: "【佛 前 上 供】"
-            ),
-            Verse(
-                number: 1,
-                text: "NOON OFFERING BEFORE THE BUDDHAS",
-                pinyin: "",
-                chinese: ""
-            ),
-            Verse(
-                number: 2,
-                text: "[Triple Invocation 三稱]",
-                pinyin: "sān chēng",
-                chinese: "三 稱"
-            ),
-            Verse(
-                number: 3,
-                text: "Homage to the Vulture Peak Assembly of Buddhas and Bodhisattvas!",
-                pinyin: "▲ ná mó líng shān huì shàng fó pú sà– (3x)",
-                chinese: "南 無 靈 山 會 上 佛 菩 薩"
-            ),
-            Verse(
-                number: 4,
-                text: "[Repeat the following section three times.]",
-                pinyin: "",
-                chinese: ""
-            ),
-            Verse(
-                number: 5,
-                text: "[Offering Text 上供文]",
-                pinyin: "shàng gòng wén",
-                chinese: "上 供 文"
-            ),
-            Verse(
-                number: 6,
-                text: "Homage to the eternally abiding Buddhas of the Ten Directions.",
-                pinyin: "▲ ná mó cháng zhù shí fāng fó",
-                chinese: "南 無 常 住 十 方 佛"
-            ),
-            Verse(
-                number: 7,
-                text: "Homage to the eternally abiding Dharma of the Ten Directions.",
-                pinyin: "ná mó cháng zhù shí fāng fǎ",
-                chinese: "南 無 常 住 十 方 法"
-            ),
-            Verse(
-                number: 8,
-                text: "Homage to the eternally abiding Sangha of the Ten Directions.",
-                pinyin: "ná mó cháng zhù shí fāng sēng",
-                chinese: "南 無 常 住 十 方 僧"
-            ),
-            Verse(
-                number: 9,
-                text: "Homage to Our Teacher, Śākyamuni Buddha.",
-                pinyin: "ná mó běn shī shì jiā móu ní fó",
-                chinese: "南 無 本 師 釋 迦 牟 尼 佛"
-            ),
-            Verse(
-                number: 10,
-                text: "Homage to disaster-eradicating and longevity-extending Medicine Master Buddha.",
-                pinyin: "ná mó xiāo zāi yán shòu yào shī fó",
-                chinese: "南 無 消 災 延 壽 藥 師 佛"
-            ),
-            Verse(
-                number: 11,
-                text: "Homage to Western Pure Land, Amitābha Buddha.",
-                pinyin: "ná mó jí lè shì jiè ō mí tuó fó",
-                chinese: "南 無 極 樂 世 界 阿 彌 陀 佛"
-            ),
-            Verse(
-                number: 12,
-                text: "Homage to future descending-birth, honored Maitreya Buddha.",
-                pinyin: "ná mó dāng lái xià shēng mí lè zūn fó",
-                chinese: "南 無 當 來 下 生 彌 勒 尊 佛"
-            ),
-            Verse(
-                number: 13,
-                text: "Homage to all buddhas in the ten directions and three periods of time.",
-                pinyin: "ná mó shí fāng sān shì yí qiè zhū fó",
-                chinese: "南 無 十 方 三 世 一 切 諸 佛"
-            ),
-            Verse(
-                number: 14,
-                text: "Homage to Great Wisdom, Mañjuśrī Bodhisattva.",
-                pinyin: "ná mó dà zhì wén shū shī lì pú sà",
-                chinese: "南 無 大 智 文 殊 師 利 菩 薩"
-            ),
-            Verse(
-                number: 15,
-                text: "Homage to Great Practice, Samantabhadra Bodhisattva.",
-                pinyin: "ná mó dà hèn pǔ xián pú sà",
-                chinese: "南 無 大 行 普 賢 菩 薩"
-            ),
-            Verse(
-                number: 16,
-                text: "Homage to Great Compassion, Avalokiteśvara Bodhisattva.",
-                pinyin: "ná mó dà bēi guān shì yīn pú sà",
-                chinese: "南 無 大 悲 觀 世 音 菩 薩"
-            ),
-            Verse(
-                number: 17,
-                text: "Homage to Mahāsthāmaprāpta Bodhisattva.",
-                pinyin: "ná mó dà shì zhì pú sà",
-                chinese: "南 無 大 勢 至 菩 薩"
-            ),
-            Verse(
-                number: 18,
-                text: "Homage to the Great Oceanic Assembly of Pure Bodhisattvas.",
-                pinyin: "ná mó qīng jìng dà hǎi zhòng pú sà",
-                chinese: "南 無 清 淨 大 海 眾 菩 薩"
-            ),
-            Verse(
-                number: 19,
-                text: "Homage to Great Vows, Kṣitigarbha Bodhisattva.",
-                pinyin: "ná mó dà yuàn dì zàng wáng pú sà",
-                chinese: "南 無 大 願 地 藏 王 菩 薩"
-            ),
-            Verse(
-                number: 20,
-                text: "Homage to the myriad Dharma-Protecting Celestial Bodhisattvas.",
-                pinyin: "ná mó hù fǎ zhū tiān pú sà",
-                chinese: "南 無 護 法 諸 天 菩 薩"
-            ),
-            Verse(
-                number: 21,
-                text: "Homage to the sacred assembly of Sanghārāma Bodhisattvas.",
-                pinyin: "ná mó qié lán shèng zhòng pú sà",
-                chinese: "南 無 伽 藍 聖 眾 菩 薩"
-            ),
-            Verse(
-                number: 22,
-                text: "Homage to the successive generations of Ancestral Master Bodhisattvas. [Return to ▲ and repeat the section three times.]",
-                pinyin: "ná mó lì dài zǔ shī pú sà",
-                chinese: "南 無 歷 代 祖 師 菩 薩"
-            ),
-            Verse(
-                number: 23,
-                text: "[Transformation of Food Dhāraṇī 變食真言]",
-                pinyin: "biàn shí zhēn yán",
-                chinese: "變 食 真 言"
-            ),
-            Verse(
-                number: 24,
-                text: "Namaḥ sarva-tathāgatāvalokite oṃ sambhara sambhara hūṃ!",
-                pinyin: "▲ na mo sa wa da ta ye duo– wa lu zhi di– om– san– bo la– san– bo la– hong– (3x)",
-                chinese: "曩 謨 薩 嚩 怛 他 誐 多 ‧ 嚩 嚧 枳 帝 ‧ 唵 ‧ 三 跋 囉 ‧ 三 跋 囉 ‧ 吽 。"
-            ),
-            Verse(
-                number: 25,
-                text: "[Sweet Dew Dhāraṇī 甘露水真言]",
-                pinyin: "gān lù shuǐ zhēn yán",
-                chinese: "甘 露 水 真 言"
-            ),
-            Verse(
-                number: 26,
-                text: "Namaḥ surūpāya tathāgatāya tadyathā oṃ suru suru pra suru pra suru svāhā!",
-                pinyin: "▲ na mo su lu po ye– da ta ye duo ye– da zhi ta– om– su lu– su lu– bo la su lu bo la su lu suo po he– (3x)",
-                chinese: "曩 謨 蘇 嚕 婆 耶 ‧ 怛 他 誐 多 耶 ‧ 怛 姪 他 ‧ 唵 ‧ 蘇 嚕 ‧ 蘇 嚕 ‧ 鉢 囉 蘇 嚕 ‧ 鉢 囉 蘇 嚕 ‧ 娑 婆 訶 。"
-            ),
-            Verse(
-                number: 27,
-                text: "This food's form, fragrance, and flavor are offered above to the Buddhas of the ten directions, In the middle to all the sacred and virtuous ones, and below to the beings of the six realms. It is given without difference nor discrimination, fulfilling in accord to one's wishes; Causing all those who have contributed today to attain immeasurable perfections.",
-                pinyin: "● cǐ shí sè xiāng wèi shàng gòng shí fāng fó zhōng fèng zhū shèng xián xià jí liù dào pǐn děng shī wú chā bié suí yuàn jiē bǎo mǎn lìng jīn shī zhě dé wú liàng bō luó mì",
-                chinese: "此 食 色 香 味 ‧ 上 供 十 方 佛 ‧ 中 奉 諸 聖 賢 ‧ 下 及 六 道 品 。 等 施 無 差 別 ‧ 隨 願 皆 飽 滿 ‧ 令 今 施 者 得 ‧ 無 量 波 羅 蜜 。"
-            ),
-            Verse(
-                number: 28,
-                text: "The three virtues and six flavors are offered to the Buddha and Sangha. Sentient beings of the Dharma realm are universally and equally proffered this offering.",
-                pinyin: "● sān dé liù wèi gòng fó jí sēng fǎ jiè yǒu qíng pǔ tóng gòng yǎng",
-                chinese: "三 德 六 味 ‧ 供 佛 及 僧 ‧ 法 界 有 情 ‧ 普 同 供 養 。"
-            ),
-            Verse(
-                number: 29,
-                text: "[Universal Offering Dhāraṇī 普供養真言]",
-                pinyin: "pǔ gòng yǎng zhēn yán",
-                chinese: "普 供 養 真 言"
-            ),
-            Verse(
-                number: 30,
-                text: "Oṃ gagana sambhava vajra hoḥ!",
-                pinyin: "▲ om– ye ye nang– san po wa– fa ri la– hu– (3x)",
-                chinese: "唵 ‧ 誐 誐 曩 ‧ 三 婆 嚩 ‧ 伐 日 囉 ‧ 斛 。"
-            ),
-            Verse(
-                number: 31,
-                text: "Homage to the Eternally Abiding Triple Gem of the Mahāyāna!",
-                pinyin: "▲ ná mó dà chèng cháng zhù sān bǎo (3x)",
-                chinese: "南 無 大 乘 常 住 三 寶"
-            ),
-            Verse(
-                number: 32,
-                text: "[Declaration of Dedicative Report 宣讀文疏]",
-                pinyin: "xuān dú wén shū",
-                chinese: "宣 讀 文 疏"
-            ),
-            Verse(
-                number: 33,
-                text: "Homage to the Noble Adornment of the Buddha's Unsurpassed Bodhi!",
-                pinyin: "▲ ná mó zhuāng yán wú shàng fó pú tí (3x)",
-                chinese: "南 無 莊 嚴 無 上 佛 菩 提"
-            ),
-            Verse(
-                number: 34,
-                text: "[Celestial Kitchen Praise 天廚妙供讚]",
-                pinyin: "tiān chú miào gòng zàn",
-                chinese: "天 廚 妙 供 讚"
-            ),
-            Verse(
-                number: 35,
-                text: "This wondrous offering of the celestial kitchen is the butter of dhyāna-bliss. Oṃ suru- sarva tathāgata tadyathā suru svāhā!",
-                pinyin: "● tiān chú miào gòng chán yuè sū tuó hu an su lu sa li wa da ta o ye duo da ni ye ta su lu suo wa he",
-                chinese: "天 廚 妙 供 禪 悅 酥 酡 戶 唵 蘇 嚕 薩 哩 嚩 怛 他 阿 誐 多 怛 你 也 他 蘇 嚕 娑 嚩 訶"
-            ),
-            Verse(
-                number: 36,
-                text: "Homage to Dhyāna Bliss Treasury Bodhisattva-Mahāsattva! Mahāprajñāpāramitā!",
-                pinyin: "▲ ná mó chán yuè zàng pú sà mó hē sà mó hē bō ruì bō luó mì",
-                chinese: "南 無 禪 悅 藏 菩 薩 摩 訶 薩 摩 訶 般 若 波 羅 蜜"
-            ),
-            Verse(
-                number: 37,
-                text: "Homage to Amitābha Buddha.",
-                pinyin: "▲ ná mó ō mí tuó fó",
-                chinese: "南 無 阿 彌 陀 佛"
-            )
-        ]
-        for verse in waterChapter7.verses {
-            verse.chapter = waterChapter7
-        }
-        
-        // MARK: Water Repentance - Chapter 8: Memorial Altar Dedication
-        let waterChapter8 = Chapter(number: 8, title: "Memorial Altar Dedication")
-        waterChapter8.text = waterRepentance
-        waterChapter8.verses = [
-            Verse(
-                number: 0,
-                text: "【往生壇回向】",
-                pinyin: "wǎng shēng tán huí xiàng",
-                chinese: "【往 生 壇 回 向】"
-            ),
-            Verse(
-                number: 1,
-                text: "MEMORIAL ALTAR DEDICATION",
-                pinyin: "",
-                chinese: ""
-            ),
-            Verse(
-                number: 2,
-                text: "[Triple Invocation and Prostration 三稱三拜]",
-                pinyin: "sān chēng sān bài",
-                chinese: "三 稱 三 拜"
-            ),
-            Verse(
-                number: 3,
-                text: "Homage to the Pure, Cool Ground Bodhisattva-Mahāsattvas!",
-                pinyin: "▲ ná mó qīng liáng dì pú sà mó hē sà (3x)",
-                chinese: "南 無 清 涼 地 菩 薩 摩 訶 薩"
-            ),
-            Verse(
-                number: 4,
-                text: "[Triple Invocation 三稱]",
-                pinyin: "sān chēng",
-                chinese: "三 稱"
-            ),
-            Verse(
-                number: 5,
-                text: "Homage to Guide and Receiver of the West, Amitābha Buddha!",
-                pinyin: "▲ ná mó xī fāng jiē yǐn ō mí tuó fó (3x)",
-                chinese: "南 無 西 方 接 引 阿 彌 陀 佛"
-            ),
-            Verse(
-                number: 6,
-                text: "[Heart Sūtra 般若心經]",
-                pinyin: "bō ruì xīn jīng",
-                chinese: "般 若 心 經"
-            ),
-            Verse(
-                number: 7,
-                text: "Prajñāpāramitā Heart Sūtra",
-                pinyin: "● bō ruì bō luó mì duō xīn jīng",
-                chinese: "般 若 波 羅 蜜 多 心 經"
-            ),
-            Verse(
-                number: 8,
-                text: "While practicing the profound prajñāpāramitā, Avalokiteśvara Bodhisattva clearly looked into the five aggregates, and overcame all ills and dissatisfaction by seeing them as all empty. Śāriputra! Form is no different from emptiness, emptiness is no different from form; form is just emptiness, emptiness is just form; so too are sensation, perception, volition, and consciousness.",
-                pinyin: "guān zì zài pú sà xíng shēn bō ruì bō luó mì duō shí zhào jiàn wǔ yùn jiē kōng dù yí qiè kǔ è shè lì zǐ sè bú yì kōng kōng bú yì sè sè jí shì kōng kōng jí shì sè shòu xiǎng xíng shì yì fù rú shì",
-                chinese: "觀 自 在 菩 薩 ‧ 行 深 般 若 波 羅 蜜 多 時 ‧ 照 見 五 蘊 皆 空 ‧ 度 一 切 苦 厄 。 舍 利 子 ‧ 色 不 異 空 ‧ 空 不 異 色 ‧ 色 即 是 空 ‧ 空 即 是 色 ‧ 受 想 行 識 亦 復 如 是 。"
-            ),
-            Verse(
-                number: 9,
-                text: "Śāriputra! This is the characteristic emptiness of all dharmas: they neither arise nor cease, are neither impure nor pure, neither increase nor decrease. Therefore, in emptiness, there is no form, no sensation, perception, volition nor consciousness; no eyes, ears, nose, tongue, body nor mind; no form, sound, scent, taste, touchable object nor mental formation; no realm of sight, up to no realm of mind; no ignorance and no end of ignorance, up to no aging and death and no end of aging and death; no dissatisfaction, origination, cessation or path; no wisdom and also no attainment.",
-                pinyin: "shè lì zǐ shì zhū fǎ kōng xiàng bù shēng bú miè bú gòu bú jìng bù zēng bù jiǎn shì gù kōng zhōng wú sè wú shòu xiǎng xíng shì wú yǎn ér bí shé shēn yì wú sè shēng xiāng wèi chù fǎ wú yǎn jiè nǎi zhì wú yì shì jiè wú wú míng yì wú wú míng jìn nǎi zhì wú láo sǐ yì wú láo sǐ jìn wú kǔ jí miè dào wú zhì yì wú dé",
-                chinese: "舍 利 子 ‧ 是 諸 法 空 相 ‧ 不 生 不 滅 ‧ 不 垢 不 淨 ‧ 不 增 不 減 。 是 故 空 中 無 色 ‧ 無 受 想 行 識 ‧ 無 眼 耳 鼻 舌 身 意 ‧ 無 色 聲 香 味 觸 法 ‧ 無 眼 界 ‧ 乃 至 無 意 識 界 ‧ 無 無 明 ‧ 亦 無 無 明 盡 ‧ 乃 至 無 老 死 ‧ 亦 無 老 死 盡 ‧ 無 苦 集 滅 道 ‧ 無 智 亦 無 得 。"
-            ),
-            Verse(
-                number: 10,
-                text: "By the absence of attainment, bodhisattvas, having relied on prajñāpāramitā, have no mental hindrances; because there are no hindrances, they have no fear and leave inverted dream-like delusions far behind, ultimately reaching nirvāṇa. All buddhas of all times, having relied on prajñāpāramitā, thus attain anuttarāsamyaksaṃbodhi. Therefore, know that prajñāpāramitā is the great spiritual mantra, the great illuminating mantra, the unexcelled mantra, the unequaled mantra; able to dispel all dissatisfaction, it is true, not deceptive. Thus the prajñāpāramitā mantra is proclaimed. Recite it this way: gate gate pāragate pārasaṃgate bodhi svāhā!",
-                pinyin: "yǐ wú suǒ dé gù pú tí sà duǒ yī bō ruì bō luó mì duō gù xīn wú guà ài wú guà ài gù wú yǒu kǒng bù yuǎn lí diān dǎo mèng xiǎng jiù jìng niè pán sān shì zhū fó yī bō ruì bō luó mì duō gù dé ō niú duō luó sān miǎo sān pú tí gù zhī bō ruì bō luó mì duō shì dà shén zhòu shì dà míng zhòu shì wú shàng zhòu shì wú déng děng zhòu néng chú yí qiè kǔ zhēn shí bù xū gù shuō bō ruì bō luó mì duō zhòu jí shuō zhòu yuē jie di jie di bo luo jie di bo luo seng jie di pu ti sa po he",
-                chinese: "以 無 所 得 故 ‧ 菩 提 薩 埵 ‧ 依 般 若 波 羅 蜜 多 故 ‧ 心 無 罣 礙 。 無 罣 礙 故 ‧ 無 有 恐 怖 ‧ 遠 離 顛 倒 夢 想 ‧ 究 竟 涅 槃 。 三 世 諸 佛 ‧ 依 般 若 波 羅 蜜 多 故 ‧ 得 阿 耨 多 羅 三 藐 三 菩 提 。 故 知 般 若 波 羅 蜜 多 ‧ 是 大 神 咒 ‧ 是 大 明 咒 ‧ 是 無 上 咒 ‧ 是 無 等 等 咒 ‧ 能 除 一 切 苦 ‧ 真 實 不 虛 。 故 說 般 若 波 羅 蜜 多 咒 ‧ 即 說 咒 曰 ‧ 揭 諦 揭 諦 ‧ 波 羅 揭 諦 ‧ 波 羅 僧 揭 諦 ‧ 菩 提 薩 婆 訶 。"
-            ),
-            Verse(
-                number: 11,
-                text: "[Rebirth in the Pure Land Dhāraṇī 往生咒]",
-                pinyin: "wǎng shēng zhòu",
-                chinese: "往 生 咒"
-            ),
-            Verse(
-                number: 12,
-                text: "Namo'mitābhāya tathāgatāya tadyathā [oṃ] amṛtod bhave amṛta-siddhaṃ bhave amṛta-vikrānte amṛta-vikrānta gāmini gagana kīrta kāre svāhā!",
-                pinyin: "▲ na mo o mi duo po ye duo ta qie duo ye duo di ye ta o mi li dou po pi o mi li duo xi dan po pi o mi li duo pi jia lan di o mi li duo pi jia lan duo qie mi ni qie qie na zhi duo jia li suo po he (3x)",
-                chinese: "南 無 阿 彌 多 婆 夜 ‧ 哆 他 伽 多 夜 ‧ 哆 地 夜 他 ‧ 阿 彌 利 都 婆 毗 ‧ 阿 彌 利 哆 ‧ 悉 耽 婆 毗 ‧ 阿 彌 唎 哆 ‧ 毗 迦 蘭 帝 ‧ 阿 彌 唎 哆 ‧ 毗 迦 蘭 多 ‧ 伽 彌 膩 ‧ 伽 伽 那 ‧ 枳 多 迦 利 ‧ 娑 婆 訶"
-            ),
-            Verse(
-                number: 13,
-                text: "[Transformation of Food Dhāraṇī 變食真言]",
-                pinyin: "biàn shí zhēn yán",
-                chinese: "變 食 真 言"
-            ),
-            Verse(
-                number: 14,
-                text: "Namaḥ sarva-tathāgatāvalokite oṃ sambhara sambhara hūṃ!",
-                pinyin: "▲ na mo sa wa da ta ye duo– wa lu zhi di– om– san– bo la– san– bo la– hong– (3x)",
-                chinese: "曩 謨 薩 嚩 怛 他 誐 多 ‧ 嚩 嚧 枳 帝 ‧ 唵 ‧ 三 跋 囉 ‧ 三 跋 囉 ‧ 吽 。"
-            ),
-            Verse(
-                number: 15,
-                text: "[Sweet Dew Dhāraṇī 甘露水真言]",
-                pinyin: "gān lù shuǐ zhēn yán",
-                chinese: "甘 露 水 真 言"
-            ),
-            Verse(
-                number: 16,
-                text: "Namaḥ surūpāya tathāgatāya tadyathā oṃ suru suru pra suru pra suru svāhā!",
-                pinyin: "▲ na mo su lu po ye– da ta ye duo ye– da zhi ta– om– su lu– su lu– bo la su lu bo la su lu suo po he– (3x)",
-                chinese: "曩 謨 蘇 嚕 婆 耶 ‧ 怛 他 誐 多 耶 ‧ 怛 姪 他 ‧ 唵 ‧ 蘇 嚕 ‧ 蘇 嚕 ‧ 鉢 囉 蘇 嚕 ‧ 鉢 囉 蘇 嚕 ‧ 娑 婆 訶 。"
-            ),
-            Verse(
-                number: 17,
-                text: "[Universal Offering Dhāraṇī 普供養真言]",
-                pinyin: "pǔ gòng yǎng zhēn yán",
-                chinese: "普 供 養 真 言"
-            ),
-            Verse(
-                number: 18,
-                text: "Oṃ gagana sambhava vajra hoḥ!",
-                pinyin: "▲ om– ye ye nang– san po wa– fa ri la– hu– (3x)",
-                chinese: "唵 ‧ 誐 誐 曩 ‧ 三 婆 嚩 ‧ 伐 日 囉 ‧ 斛 。"
-            ),
-            Verse(
-                number: 19,
-                text: "[Lotus Pool Praise 蓮池讚]",
-                pinyin: "lián chí zàn",
-                chinese: "蓮 池 讚"
-            ),
-            Verse(
-                number: 20,
-                text: "In the Lotus Pool Oceanic Assembly, Amitābha Tathāgata, Avalokiteśvara, and Mahāsthāmaprāpta sit upon lotus thrones, receiving and guiding one up golden steps. Their mighty vows magnificently realized, universally wish all to leave the dust of defilements!",
-                pinyin: "● liá n chí hǎi huì mí tuó rú lái guān yīn shì zhì zuò lián tái jiē yǐn shàng jīn jiē dà shì hóng kāi pǔ yuàn lí chén āi",
-                chinese: "蓮 池 海 會 ‧ 彌 陀 如 來 ‧ 觀 音 勢 至 坐 蓮 臺 ‧ 接 引 上 金 階 。 大 誓 弘 開 ‧ 普 願 離 塵 埃 。"
-            ),
-            Verse(
-                number: 21,
-                text: "Homage to the Lotus Pool Oceanic Assembly of Bodhisattva-Mahāsattvas!",
-                pinyin: "▲ ná mó lián chí hǎi huì pú sà mó hē sà (3x)",
-                chinese: "南 無 蓮 池 海 會 菩 薩 摩 訶 薩"
-            ),
-            Verse(
-                number: 22,
-                text: "Homage to Amitābha Buddha.",
-                pinyin: "▲ ná mó ō mí tuó fó",
-                chinese: "南 無 阿 彌 陀 佛"
-            )
-        ]
-        for verse in waterChapter8.verses {
-            verse.chapter = waterChapter8
-        }
-        
-        // MARK: Water Repentance - Chapter 9: Dedication
-        let waterChapter9 = Chapter(number: 9, title: "Dedication")
-        waterChapter9.text = waterRepentance
-        waterChapter9.verses = [
-            Verse(
-                number: 0,
-                text: "【回向】",
-                pinyin: "huí xiàng",
-                chinese: "【回 向】"
-            ),
-            Verse(
-                number: 1,
-                text: "DEDICATION",
-                pinyin: "",
-                chinese: ""
-            ),
-            Verse(
-                number: 2,
-                text: "Homage to Amitābha Buddha.",
-                pinyin: "▲ ná mó ō mí tuó fó",
-                chinese: "南 無 阿 彌 陀 佛"
-            ),
-            Verse(
-                number: 3,
-                text: "[Three Refuges 三皈依文]",
-                pinyin: "sān guī yī wén",
-                chinese: "三 皈 依 文"
-            ),
-            Verse(
-                number: 4,
-                text: "I seek refuge in the Buddha, wishing that all sentient beings understand the great Path and make the greatest vow!",
-                pinyin: "● zì guī yī fó dāng yuàn zhòng shēng tǐ jiě dà dào fā wú shàng xīn",
-                chinese: "自 皈 依 佛 ‧ 當 願 眾 生 ‧ 體 解 大 道 ‧ 發 無 上 心 。"
-            ),
-            Verse(
-                number: 5,
-                text: "I seek refuge in the Dharma, wishing that all sentient beings deeply study the sūtra treasury and acquire an ocean of wisdom!",
-                pinyin: "● zì guī yī fǎ dāng yuàn zhòng shēng shēn rù jīng zàng zhì huì rú hǎi",
-                chinese: "自 皈 依 法 ‧ 當 願 眾 生 ‧ 深 入 經 藏 ‧ 智 慧 如 海 。"
-            ),
-            Verse(
-                number: 6,
-                text: "I seek refuge in the Sangha, wishing that all sentient beings lead the congregation without any obstruction!",
-                pinyin: "● zì guī yī sēng dāng yuàn zhòng shēng tóng lǐ dà zhòng yí qiè wú ài",
-                chinese: "自 皈 依 僧 ‧ 當 願 眾 生 ‧ 統 理 大 眾 ‧ 一 切 無 礙 。"
-            ),
-            Verse(
-                number: 7,
-                text: "[Dedication Verse 回向偈]",
-                pinyin: "huí xiàng jì",
-                chinese: "回 向 偈"
-            ),
-            Verse(
-                number: 8,
-                text: "May kindness, compassion, joy, and equanimity fill all Dharma Realms; May we cherish our blessings and create affinities benefitting heaven and earth; May we practice Chan, Pure Land, precepts, and the patience of equality; May we be humble, grateful, and bear a mind of great vows!",
-                pinyin: "● cí bēi xí shě piàn fǎ jiè xí fú jié yuán lì rén tiān chán jìng jiè hèng píng děng rěn cán kuì gǎn ēn dà yuàn xīn",
-                chinese: "慈 悲 喜 捨 遍 法 界 ‧ 惜 福 結 緣 利 人 天 ‧ 禪 淨 戒 行 平 等 忍 ‧ 慚 愧 感 恩 大 願 心 。"
-            ),
-            Verse(
-                number: 9,
-                text: "[Venerate the Buddha with Three Prostrations + Bow 禮佛三拜問訊]",
-                pinyin: "lǐ fó sān bài wèn xùn",
-                chinese: "禮 佛 三 拜 問 訊"
-            ),
-            Verse(
-                number: 10,
-                text: "[Dharma Talk by Officiant 主法開示]",
-                pinyin: "zhǔ fǎ kāi shì",
-                chinese: "主 法 開 示"
-            ),
-            Verse(
-                number: 11,
-                text: "Liturgy of the Samadhi Water Repentance of Kindness and Compassion: Scroll One | The End",
-                pinyin: "cí bēi sān mèi shuǐ chàn kē yí juàn shàng zhōng",
-                chinese: "慈 悲 三 昧 水 懺 科 儀 ‧ 卷 上 終"
-            )
-        ]
-        for verse in waterChapter9.verses {
-            verse.chapter = waterChapter9
-        }
-        
-        waterRepentance.chapters.append(contentsOf: [waterChapter1, waterChapter2, waterChapter3, waterChapter4, waterChapter5, waterChapter6, waterChapter7, waterChapter8, waterChapter9])
+        waterRepentance.chapters.append(contentsOf: [waterChapter1, waterChapter2, waterChapter3, waterChapter4, waterChapter5, waterChapter6])
         context.insert(waterRepentance)
         }
         
+        // Great Compassion Repentance
+        if shouldLoadGreatCompassionRepentance {
+        let greatCompassionRepentance = BuddhistText(
+            title: "Great Compassion Repentance (大悲咒)",
+            author: "Buddha",
+            textDescription: "Liturgy of the Great Compassion Repentance of the Thousand-Handed & Thousand-Eyed One",
+            category: "Liturgy",
+            coverImageName: "GreatCompassionRepentance"
+        )
+        
+        let gcChapter1 = Chapter(number: 1, title: "Opening and Invocations")
+        gcChapter1.text = greatCompassionRepentance
+        gcChapter1.verses = [
+            Verse(
+                number: 1,
+                text: "[Mindfully Invoke the Sacred Title]",
+                pinyin: "chēng niàn shèng hào",
+                chinese: "稱念聖號"
+            ),
+            Verse(
+                number: 2,
+                text: "Homage to Great Compassion, Avalokiteśvara Bodhisattva!",
+                pinyin: "ná mó dà bēi guān shì yīn pú sà",
+                chinese: "南無大悲觀世音菩薩"
+            ),
+            Verse(
+                number: 3,
+                text: "[Pure Water of the Willow Sprig Praise]",
+                pinyin: "yáng zhī jìng shuǐ zàn",
+                chinese: "楊枝淨水讚"
+            ),
+            Verse(
+                number: 4,
+                text: "Pure water of the willow sprig showers across the trichiliocosm.",
+                pinyin: "yáng zhī jìng shuǐ piàn sǎ sān qiān",
+                chinese: "楊枝淨水 偏灑三千"
+            ),
+            Verse(
+                number: 5,
+                text: "Its nature of emptiness has eight virtues benefitting human and celestial beings,",
+                pinyin: "xìng kōng bà dé lì rén tiān",
+                chinese: "性空八德利人天"
+            ),
+            Verse(
+                number: 6,
+                text: "extensively enhancing and lengthening blessings and longevity,",
+                pinyin: "fú shòu guǎng zēng yán",
+                chinese: "福壽廣增延"
+            ),
+            Verse(
+                number: 7,
+                text: "extinguishing sins and eliminating faults, blazing flames are transformed into red lotuses!",
+                pinyin: "miè zuì xiāo qiān huǒ yàn huà hóng lián",
+                chinese: "滅罪消愆 火燄化紅蓮"
+            ),
+            Verse(
+                number: 8,
+                text: "Homage to Avalokiteśvara Bodhisattva-Mahāsattva!",
+                pinyin: "ná mó guān shì yīn pú sà mó hē sà (3x)",
+                chinese: "南無觀世音菩薩摩訶薩"
+            ),
+            Verse(
+                number: 9,
+                text: "All be reverent and solemn!",
+                pinyin: "yí qiè gōng jìng",
+                chinese: "一切恭敬"
+            ),
+            Verse(
+                number: 10,
+                text: "Single-mindedly prostrate to the Eternally Abiding Triple Gem of the ten directions!",
+                pinyin: "yì xīn dǐng lǐ shí fāng cháng zhù sān bǎo",
+                chinese: "一心頂禮·十方常住三寶"
+            ),
+            Verse(
+                number: 11,
+                text: "Each in the assembly, all kneel down. Solemnly hold the incense and flowers and offer them in accordance with the Dharma.",
+                pinyin: "shì zhū zhòng děng gè gè hú guì yán chí xiāng huá rú fă gòng yăng",
+                chinese: "是諸眾等各各胡跪嚴持香華如法供養"
+            ),
+            Verse(
+                number: 12,
+                text: "May this cloud of incense and flowers pervade the realms of the ten directions,",
+                pinyin: "yuàn cǐ xiāng huā yún piàn măn shí fāng jiè",
+                chinese: "願此香花雲・偏滿十方界・"
+            ),
+            Verse(
+                number: 13,
+                text: "fill each and every buddha land with limitless fragrance and adornments,",
+                pinyin: "yī yī zhū fó tù wú liàng xiāng zhuāng yán",
+                chinese: "一一諸佛土・無量香莊嚴。"
+            ),
+            Verse(
+                number: 14,
+                text: "fulfill the bodhisattva path, and become the tathāgatha's fragrance!",
+                pinyin: "jù zú pú sà dào chéng jiù rú lái xiāng",
+                chinese: "具足菩薩道·成就如來香°"
+            ),
+            Verse(
+                number: 15,
+                text: "May these incense and flowers pervade the ten directions",
+                pinyin: "wǒ cǐ xiāng huá piàn shí fāng",
+                chinese: "我此香華偏十方"
+            ),
+            Verse(
+                number: 16,
+                text: "and become a subtle and wondrous platform of light; various kinds of celestial music, and precious celestial incenses; various celestial delicacies, and precious celestial robes;",
+                pinyin: "yǐ wéi wéi miào guāng míng tái zhū tiān yīn yuè tiān bǎo xiāng zhū tiān yáo shàn tiān bǎo yī",
+                chinese: "以為微妙光明臺・諸天音樂天寶香・諸天餚饍天寶衣・"
+            ),
+            Verse(
+                number: 17,
+                text: "and inconceivable and wondrous dharma sense objects. Each of these [six sense] objects manifests all sense objects; each of these [six sense] objects manifests all phenomena.",
+                pinyin: "bù kě sī yì miào fă chén yī yī chén chū yí qiè chén yī yī chén chū yí qiè fă",
+                chinese: "不可思議妙法塵・一一塵出一切塵 塵出一切法·"
+            )
+        ]
+        for verse in gcChapter1.verses {
+            verse.chapter = gcChapter1
+        }
+        
+        let gcChapter2 = Chapter(number: 2, title: "Universal Offerings")
+        gcChapter2.text = greatCompassionRepentance
+        gcChapter2.verses = [
+            Verse(
+                number: 1,
+                text: "[These offerings] spin and adorn each other without obstruction, spreading and arriving before the Triple Gem of the ten directions. And before all of the Triple Gem in the Dharma realms of",
+                pinyin: "xuán zhuǎn wú ài hù zhuāng yán piàn zhì shí fāng sān bǎo qián shí fāng fǎ jiè sān bǎo qián",
+                chinese: "旋轉無礙互莊嚴·偏至十方三寶前・十方法界三寶前・"
+            ),
+            Verse(
+                number: 2,
+                text: "the ten directions, my own body is making this offering, with each of my bodies appearing throughout Dharma Realms. [These offerings] do not interfere or obstruct each other,",
+                pinyin: "xī yǒu wǒ shēn xiū gòng yăng yī yī jiě xī piàn få jiè bĩ bǐ wú zá wú zhàng ài",
+                chinese: "悉有我身修供養・ 一皆悉编法界·彼彼無雜無障礙。"
+            ),
+            Verse(
+                number: 3,
+                text: "and until the limits of the future, they conduct the Buddha's work; [their fragrance] universally permeates all sentient beings in the Dharma Realms, and those who are permeated [by its fragrance] all give rise to the bodhi mind",
+                pinyin: "jìn wèi lái jì zuò fó shì pù xūn fă jiè zhū zhòng shēng méng xūn jiē fā pú tí xīn",
+                chinese: "盡未來際作佛事·普熏法界諸眾 生・蒙熏皆發菩提心。"
+            ),
+            Verse(
+                number: 4,
+                text: "and together enter the state of non-arising, awakening to the Buddha's wisdom!",
+                pinyin: "tóng rù wú shēng zhèng fó zhì",
+                chinese: "同入無生 證佛智"
+            ),
+            Verse(
+                number: 5,
+                text: "Having made offerings, all be reverent and solemn.",
+                pinyin: "gòng yăng yǐ yí qiè gōng jìng",
+                chinese: "供養巳・一切恭敬"
+            ),
+            Verse(
+                number: 6,
+                text: "Homage to Saddharmaprabhasa Tathagatha of the past, Avalokiteśvara Bodhisattva of the present.",
+                pinyin: "ná mó guò qù zhèng fǎ míng rú lái xiàn qián guān shì yīn pú sà",
+                chinese: "南無過去正法明如來 現前觀世音菩薩·"
+            ),
+            Verse(
+                number: 7,
+                text: "Having accomplished wonderful merits and virtue, you are replete in great kindness and compassion. With one body and mind, you manifest a thousand hands and eyes,",
+                pinyin: "chéng miào gōng dé jù dà cí bēi yú yī shēn xīn xiàn qiān shòu",
+                chinese: "成妙功德·具大慈悲·於一身心・現千手"
+            ),
+            Verse(
+                number: 8,
+                text: "illuminating and observing the Dharma Realms while protecting and supporting sentient beings, causing them to give rise to the vast and great aspiration for the Path and",
+                pinyin: "yǎn zhào jiàn fă jiè hù chí zhòng shēng jīn fā guăng dà dào xīn",
+                chinese: "眼・照見法界・護持眾 生。今發廣大道心。"
+            )
+        ]
+        for verse in gcChapter2.verses {
+            verse.chapter = gcChapter2
+        }
+        
+        let gcChapter3 = Chapter(number: 3, title: "Prostrations to Buddhas")
+        gcChapter3.text = greatCompassionRepentance
+        gcChapter3.verses = [
+            Verse(
+                number: 1,
+                text: "Single-mindedly prostrate to Our Teacher, Sakyamuni World-Honored One.",
+                pinyin: "yī xīn dǐng lǐ běn shī shì jiā móu ní fó shì zūn",
+                chinese: "一心頂禮·本師釋迦牟尼佛世尊"
+            ),
+            Verse(
+                number: 2,
+                text: "Single-mindedly prostrate to Western Pure Land, Amitabha World-Honored One.",
+                pinyin: "yī xīn dǐng lǐ xī fāng jìng tǔ ō mí tuó fó shì zūn",
+                chinese: "一心頂禮·西方淨土·阿彌陀佛世尊"
+            ),
+            Verse(
+                number: 3,
+                text: "Single-mindedly prostrate to Sahasraprabharaja-dhyāna-bhūmika World-Honored One of infinite millions of kalpas past.",
+                pinyin: "yī xīn dǐng lǐ wú liàng yì jié qián qiān guāng wáng jìng zhù shì zūn",
+                chinese: "一心頂禮·無量億劫前·千光王靜住世尊"
+            ),
+            Verse(
+                number: 4,
+                text: "Single-mindedly prostrate to the myriad buddhas, world-honored ones, of the past as numerous as the sands of ninety-nine million Ganges Rivers.",
+                pinyin: "yī xīn dǐng lǐ guò qù jiù shí jiù yì jìng qié shā zhū fó shì zūn",
+                chinese: "一心頂禮·過去九十九億殑伽沙諸佛世尊"
+            ),
+            Verse(
+                number: 5,
+                text: "Single-mindedly prostrate to Saddharmaprabhasa World-Honored One of limitless kalpas past.",
+                pinyin: "yī xīn dǐng lǐ guò qù wú liàng jié zhèng fă míng shì zūn",
+                chinese: "一心頂禮·過去無量劫正法明世尊"
+            ),
+            Verse(
+                number: 6,
+                text: "Single-mindedly prostrate to all buddhas, world-honored ones of the ten directions.",
+                pinyin: "yī xīn dǐng lǐ shí fāng yī qiè zhū fó shì zūn",
+                chinese: "一心頂禮·十方一切諸佛世尊"
+            ),
+            Verse(
+                number: 7,
+                text: "Single-mindedly prostrate to the thousand buddhas of the Virtuous Kalpa, and all buddhas, world-honored ones of the three periods of time.",
+                pinyin: "yī xīn dǐng lǐ xián jié qiān fó sān shì yī qiè zhū fó shì zūn",
+                chinese: "一心頂禮·賢劫千佛·三世一切諸佛世尊"
+            ),
+            Verse(
+                number: 8,
+                text: "Single-mindedly prostrate to the spiritually wondrous verses of the Great Dhāraṇī of the",
+                pinyin: "yī xīn dǐng lǐ guăng dà yuán mǎn wú ài dà bēi xīn",
+                chinese: "心頂禮·廣大圓滿無礙大悲心"
+            ),
+            Verse(
+                number: 9,
+                text: "Vast, Perfected, Unhindered Mind of Great Compassion.",
+                pinyin: "dà tuó luó ní shén miào zhāng jù",
+                chinese: "大陀羅尼神妙章句"
+            ),
+            Verse(
+                number: 10,
+                text: "Single-mindedly prostrate to all dhāraṇīs proclaimed by Avalokiteśvara,",
+                pinyin: "yī xīn dǐng lǐ guān yīn suǒ shuō zhū tuó luó ní",
+                chinese: "一心頂禮·觀音所說諸陀羅尼·"
+            ),
+            Verse(
+                number: 11,
+                text: "and all honored Dharma of the ten directions and three periods of time.",
+                pinyin: "jí shí fāng sān shì yī qiè zūn fă",
+                chinese: "及十方三世一切尊法"
+            )
+        ]
+        for verse in gcChapter3.verses {
+            verse.chapter = gcChapter3
+        }
+        
+        let gcChapter4 = Chapter(number: 4, title: "Prostrations to Bodhisattvas")
+        gcChapter4.text = greatCompassionRepentance
+        gcChapter4.verses = [
+            Verse(
+                number: 1,
+                text: "Single-mindedly prostrate to Thousand-Handed and Thousand-Eyed, Great Kindness and",
+                pinyin: "yī xīn dĩng lĩ qiān shǒu qiān yăn dà cí dà bēi",
+                chinese: "一心頂禮·千手千眼・大慈大悲・"
+            ),
+            Verse(
+                number: 2,
+                text: "Great Compassion, Avalokiteśvara Bodhisattva-Mahāsattva.",
+                pinyin: "guān shì yīn zì zài pú sà mó hē sà",
+                chinese: "觀世音自在菩薩摩訶薩"
+            ),
+            Verse(
+                number: 3,
+                text: "Single-mindedly prostrate to Mahāsthāmaprāpta Bodhisattva-Mahāsattva.",
+                pinyin: "yī xīn dĩng lĩ dà shì zhì pú sà mó hē sà",
+                chinese: "一心頂禮·大勢至菩薩摩訶薩"
+            ),
+            Verse(
+                number: 4,
+                text: "Single-mindedly prostrate to Dhāraṇī Bodhisattva-Mahāsattva",
+                pinyin: "yī xīn dĩng lǐ zǒng chí wáng pú sà mó hē sà",
+                chinese: "一心頂禮總持王菩薩摩訶薩"
+            ),
+            Verse(
+                number: 5,
+                text: "Single-mindedly prostrate to Sūryaprabha Bodhisattva-, Candraprabha Bodhisattva-Mahāsattvas.",
+                pinyin: "yī xīn dĩng lĩ rì guāng pú sà yuè guāng pú sà mó hē sà",
+                chinese: "一心頂禮·日光菩薩・月光菩薩摩訶薩"
+            ),
+            Verse(
+                number: 6,
+                text: "Single-mindedly prostrate to Ratnarāja Bodhisattva-, Bhaisajyarāja Bodhisattva-,",
+                pinyin: "yī xīn dĩng lĩ bǎo wáng pú sà yào wáng pú sà",
+                chinese: "一心頂禮·寶王菩薩‧藥王菩薩・"
+            ),
+            Verse(
+                number: 7,
+                text: "Bhaisajyasamudgata Bodhisattva-Mahāsattvas.",
+                pinyin: "yào shàng pú sà mó hē sà",
+                chinese: "藥上菩薩摩訶薩"
+            ),
+            Verse(
+                number: 8,
+                text: "Single-mindedly prostrate to Avatamsaka Bodhisattva-, Mahāvyūha Bodhisattva-,",
+                pinyin: "yī xīn dĩng lĩ huá yán pú sà dà zhuāng yán pú sà",
+                chinese: "一心頂禮·華嚴菩薩・大莊嚴菩薩・"
+            ),
+            Verse(
+                number: 9,
+                text: "Ratnagarbha Bodhisattva-Mahāsattvas.",
+                pinyin: "bǎo zàng pú sà mó hē sà",
+                chinese: "寶藏菩薩摩訶薩"
+            ),
+            Verse(
+                number: 10,
+                text: "Single-mindedly prostrate to Gunagarbha Bodhisattva-, Vajragarbha Bodhisattva-,",
+                pinyin: "yī xīn dĩng lĩ dé zàng pú sà jīn gāng zàng pú sà",
+                chinese: "一心頂禮·德藏菩薩・金剛藏菩薩・"
+            ),
+            Verse(
+                number: 11,
+                text: "Ākāśagarbha Bodhisattva-Mahāsattvas.",
+                pinyin: "xū kōng zàng pú sà mó hē sà",
+                chinese: "虛空藏菩薩摩訶薩"
+            ),
+            Verse(
+                number: 12,
+                text: "Single-mindedly prostrate to Maitreya Bodhisattva-, Samantabhadra Bodhisattva-,",
+                pinyin: "yī xīn dǐng lǐ mí lēi pú sà pũ xián pú sà",
+                chinese: "一心頂禮·彌勒菩薩・普賢菩薩・"
+            ),
+            Verse(
+                number: 13,
+                text: "Mañjuśrī Bodhisattva-Mahāsattvas.",
+                pinyin: "wén shū shī lì pú sà mó hē sà",
+                chinese: "文殊師利菩薩摩訶薩"
+            ),
+            Verse(
+                number: 14,
+                text: "Single-mindedly prostrate to all bodhisattva-mahāsattvas of the ten directions and three periods of time.",
+                pinyin: "yī xīn dǐng lǐ shí fāng sān shì yī qiè pú sà mó hē sà",
+                chinese: "一心頂禮·十方三世一切菩薩摩訶薩"
+            )
+        ]
+        for verse in gcChapter4.verses {
+            verse.chapter = gcChapter4
+        }
+        
+        let gcChapter5 = Chapter(number: 5, title: "Vows and Invocations")
+        gcChapter5.text = greatCompassionRepentance
+        gcChapter5.verses = [
+            Verse(
+                number: 1,
+                text: "The [Great Compassion Dhāraṇī] Sūtra states: \"If there are any bhiksus, bhikșunīs, upāsakas, upāsikās,",
+                pinyin: "jīng yún ruò yǒu bĩ qiū bǐ qiū ní yōu pó sè yōu pó yí tóng nán",
+                chinese: "經云・若有比丘・比丘尼·優婆塞・優婆夷·童男"
+            ),
+            Verse(
+                number: 2,
+                text: "boys or girls, who wish to recite and uphold [this dhāraṇī], bring forth the mind of kindness",
+                pinyin: "tóng nữ yù sòng chí zhě yú zhū zhòng shēng qǐ cí bēi xīn xiān",
+                chinese: "童女・欲誦持者・於諸眾生 起慈悲心・先"
+            ),
+            Verse(
+                number: 3,
+                text: "and compassion towards all sentient beings. They should first follow me in making these vows:",
+                pinyin: "dāng cóng wõ fã rú shì yuàn",
+                chinese: "當從我發如是願。"
+            ),
+            Verse(
+                number: 4,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to quickly know all phenomena.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ sù zhī yí qiè fă",
+                chinese: "南無大悲觀世音·願我速知一切法。"
+            ),
+            Verse(
+                number: 5,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to soon obtain the eye of wisdom.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ zǎo dé zhì huì yăn",
+                chinese: "南無大悲觀世音·願我早得智慧眼。"
+            ),
+            Verse(
+                number: 6,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to quickly liberate all beings.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ sù dù yí qiè zhòng",
+                chinese: "南無大悲觀世音·願我速度一切眾"
+            ),
+            Verse(
+                number: 7,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to soon obtain skillful and expedient means.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ zǎo dé shàn fāng biàn",
+                chinese: "南無大悲觀世音·願我早得善方便"
+            ),
+            Verse(
+                number: 8,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to quickly sail upon the boat of prajñā.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ sù chéng bō ruì chuán",
+                chinese: "南無大悲觀世音·願我速乘般若船"
+            ),
+            Verse(
+                number: 9,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to soon cross the sea of suffering.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ zǎo dé yuè kŭ hăi",
+                chinese: "南無大悲觀世音·願我早得越苦海。"
+            ),
+            Verse(
+                number: 10,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to quickly master the path of precepts and concentration.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ sù dé jiè dìng dào",
+                chinese: "南無大悲觀世音·願我速得戒定道。"
+            ),
+            Verse(
+                number: 11,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to soon ascend the mountain of nirvāņa.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ zǎo dēng niè pán shān",
+                chinese: "南無大悲觀世音·願我早登涅槃山"
+            ),
+            Verse(
+                number: 12,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to quickly dwell in the home of the unconditioned.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ sù huì wú wèi shě",
+                chinese: "南無大悲觀世音·願我速會無為舍。"
+            ),
+            Verse(
+                number: 13,
+                text: "Seeking refuge in Great Compassion, Avalokiteśvara, I vow to soon recognize the Dharma nature body as my own.",
+                pinyin: "ná mó dà bēi guān shì yīn yuàn wǒ zǎo tóng fǎ xìng shēn",
+                chinese: "南無大悲觀世音·願我早同法性身"
+            ),
+            Verse(
+                number: 14,
+                text: "If I face a mountain of knives, the mountain of knives shall shatter by itself.",
+                pinyin: "wõ ruò xiàng dão shān dão shān zì cuī zhé",
+                chinese: "我若向刀山 ·刀山自摧折。"
+            ),
+            Verse(
+                number: 15,
+                text: "If I face liquid fire, the liquid fire shall dry-up by itself.",
+                pinyin: "wõ ruò xiàng huõ tāng zì kū jié",
+                chinese: "我若向火湯·火湯自枯竭"
+            ),
+            Verse(
+                number: 16,
+                text: "If I face the hells, the hells shall vanish and extinguish by themselves.",
+                pinyin: "wõ ruò xiàng dì yù zì xiāo miè",
+                chinese: "我若向地獄·地獄自消滅"
+            ),
+            Verse(
+                number: 17,
+                text: "If I face hungry ghosts, the hungry ghosts shall become self-satisfied.",
+                pinyin: "wõ ruò xiàng è gui zì bão măn",
+                chinese: "我若向餓鬼·餓鬼自飽滿"
+            ),
+            Verse(
+                number: 18,
+                text: "If I face the asūras, their minds of hatred shall tame themselves.",
+                pinyin: "wõ ruò xiàng è xīn zì tiáo fú",
+                chinese: "我若向惡心·惡心自調伏"
+            ),
+            Verse(
+                number: 19,
+                text: "If I face animals, by themselves they shall gain great wisdom!",
+                pinyin: "wõ ruò xiàng zì dé dà zhì huì",
+                chinese: "我若向自得大智慧"
+            ),
+            Verse(
+                number: 20,
+                text: "Homage to Avalokiteśvara Bodhisattva!",
+                pinyin: "ná mó guān shì yīn pú sà (10x)",
+                chinese: "南無觀世音菩薩"
+            ),
+            Verse(
+                number: 21,
+                text: "Homage to Amitābha Buddha!",
+                pinyin: "ná mó ō mí tuó fó (10x)",
+                chinese: "南無阿彌陀佛"
+            ),
+            Verse(
+                number: 22,
+                text: "Avalokiteśvara Bodhisattva addressed the Buddha saying, 'World-Honored One, if sentient beings",
+                pinyin: "guān shì yīn pú sà bái fó yán shì zūn ruò zhū zhòng shēng sòng chí",
+                chinese: "觀世音菩薩白佛言・世尊・若諸眾生・誦持"
+            ),
+            Verse(
+                number: 23,
+                text: "who recite and uphold the Great Compassion Dhāraṇī descend into the three lower realms, I vow to not achieve proper awakening.",
+                pinyin: "dà bēi shén zhòu duò sân è dào zhě wǒ shì bù chéng zhèng jué",
+                chinese: "大悲神咒・墮三惡道者・我誓不成正覺。"
+            )
+        ]
+        for verse in gcChapter5.verses {
+            verse.chapter = gcChapter5
+        }
+        
+        let gcChapter6 = Chapter(number: 6, title: "The Great Compassion Dhāraṇī")
+        gcChapter6.text = greatCompassionRepentance
+        gcChapter6.verses = [
+            Verse(
+                number: 1,
+                text: "[Repeat the following dhāraṇī multiple times as instructed.]",
+                pinyin: "",
+                chinese: ""
+            ),
+            Verse(
+                number: 2,
+                text: "After Avalokiteśvara Bodhisattva discoursed this dhāraṇī, the great earth quaked in six ways,",
+                pinyin: "guān shì yīn pú sà shuō cǐ zhòu yĩ dà dì liù biàn zhèn dòng tiān yũ",
+                chinese: "觀世音菩薩說此咒已・大地六變震動・天雨"
+            ),
+            Verse(
+                number: 3,
+                text: "the heavens showered precious blossoms which descended abundantly, the myriad buddhas of the ten directions were all delighted, celestial demons and those of other paths were terrified",
+                pinyin: "bǎo huá bìn fēn ér xià shí fāng zhū fó xī jiē huān xi tiān mó wài",
+                chinese: "寶華繽紛而下・十方諸佛悉皆歡喜·天魔外"
+            ),
+            Verse(
+                number: 4,
+                text: "as their hairs stood on end, and all in the assembly attained the realization of various stages",
+                pinyin: "dào kòng bù máo shù yí qiè zhòng huì jiē huò guǒ zhèng huò dé",
+                chinese: "道恐怖毛豎· 切眾會皆獲果證 ·或得"
+            ),
+            Verse(
+                number: 5,
+                text: "of fruition. Some attained the fruition of the śrotāpanna, some attained the fruition of the sakṛdāgāmin, some attained the fruition of the anāgāmin,",
+                pinyin: "xū tuó huán guǒ huò dé sĩ tuó hán guǒ huò dé ō nà hán guo",
+                chinese: "須陀洹果·或得斯陀含果·或得阿那含果"
+            ),
+            Verse(
+                number: 6,
+                text: "some attained the fruition of the arhat, some attained the first ground or second ground, the third, fourth, or fifth grounds,",
+                pinyin: "huò dé ō luó hàn guǒ huò dé yī dì èr dì sān sì wũ dì",
+                chinese: "或得阿羅漢果·或得一地二地·三四五地"
+            ),
+            Verse(
+                number: 7,
+                text: "and even the tenth ground [of a bodhisattva], and infinite sentient beings gave rise to the bodhi mind.",
+                pinyin: "năi zhì shí dì zhě wú liàng zhòng shēng fā pú tí xīn",
+                chinese: "乃至十地者・無量 眾 生發菩提心。"
+            )
+        ]
+        for verse in gcChapter6.verses {
+            verse.chapter = gcChapter6
+        }
+        
+        let gcChapter7 = Chapter(number: 7, title: "Repentance and Confession")
+        gcChapter7.text = greatCompassionRepentance
+        gcChapter7.verses = [
+            Verse(
+                number: 1,
+                text: "All beings and I,",
+                pinyin: "wǒ jí zhòng shēng",
+                chinese: "我及眾生・"
+            ),
+            Verse(
+                number: 2,
+                text: "since beginningless time, have been constantly obstructed by the grave transgressions of the three karmas and six faculties. We did not encounter the buddhas and did not know that it is necessary to leave [samsāra].",
+                pinyin: "wú shĩ cháng wéi sān yè liù gēn zhòng zuì suo zhàng bù jiàn zhū fó bù zhī chú yào",
+                chinese: "無始常為,三業六根重罪所障不見諸佛,不知出要・"
+            ),
+            Verse(
+                number: 3,
+                text: "Instead, we were complicit with birth and death and did not understand the wondrous principles [of the Dharma]. Although we now know this, we are obstructed by all grave transgressions,",
+                pinyin: "dàn shùn shēng sǐ bù zhī miào lǐ wǒ jìn suī zhī yóu yù zhòng shēng tóng wéi yī qiè",
+                chinese: "但順生死不知妙理·我今雖知·猶與眾 生 同為 切。"
+            ),
+            Verse(
+                number: 4,
+                text: "just like all sentient beings are. Now, [kneeling] before Avalokiteśvara and the buddhas of the ten directions, we seek refuge in you as well as repent and reform on universal behalf of all sentient beings.",
+                pinyin: "zhòng zuì suǒ zhàng jìn duì guān yīn shí fāng fó qián pũ wéi zhòng shēng guī mìng chàn hui",
+                chinese: "重罪所障今對觀音十方佛前·普為眾生皈命懺悔·"
+            ),
+            Verse(
+                number: 5,
+                text: "May you bless us with aid and support! Cause these obstacles to be dissolved and extinguished!",
+                pinyin: "wéi yuàn jiā hù lìng zhàng xiāo miè",
+                chinese: "惟願加護・令障消滅"
+            ),
+            Verse(
+                number: 6,
+                text: "Universally, on behalf of the four objects of gratitude, three states of existence, and all sentient beings in the Dharma Realms,",
+                pinyin: "pů wéi sì ên sān yǒu fă jiè zhòng shēng",
+                chinese: "普為四恩三有·法界眾 生"
+            ),
+            Verse(
+                number: 7,
+                text: "we all vow to sever and eradicate the three obstacles through seeking refuge, repentance, and reform.",
+                pinyin: "xī yuàn duàn chú săn zhàng guī mìng chàn hui",
+                chinese: "悉願斷除三障・皈命懺悔。"
+            ),
+            Verse(
+                number: 8,
+                text: "All beings and I,",
+                pinyin: "wǒ yũ zhòng shēng",
+                chinese: "我與眾生・"
+            ),
+            Verse(
+                number: 9,
+                text: "since beginningless time until now, have internally schemed for ourselves and externally conspired with evil friends due to attachments and wrong views. We did not rejoice in",
+                pinyin: "wú shì lái jìn yóu ài jiàn gù nèi jì wõ rén wài yīn è yǒu bù suí xĩ tā",
+                chinese: "無始來今・由愛見故・內計我人·外因悪友·不隨喜他·"
+            ),
+            Verse(
+                number: 10,
+                text: "a hair's breadth of others' virtues and instead extensively committed various offenses through the three karmas. Though each incident was not great, our unwholesome intentions pervaded.",
+                pinyin: "yī háo zhī shàn wéi piàn sān yè guǎng zào zhòng zuì shì suī bù guăng è xīn piàn bù",
+                chinese: "一毫之善·唯偏三業廣造眾罪事雖不廣·惡心偏布·"
+            ),
+            Verse(
+                number: 11,
+                text: "Wholeheartedly we repent and reform! We, your disciples and others, along with all beings of the Dharma Realms,",
+                pinyin: "zhì xīn chàn huǐ dì zi zhòng děng",
+                chinese: "至心懺悔・弟子眾 等 原與法界一切眾"
+            ),
+            Verse(
+                number: 12,
+                text: "possess this single mind of the present, which is inherently replete with the thousand phenomena,",
+                pinyin: "jù cǐ yī xīn běn jù qiān rú",
+                chinese: "具此一心本具千如"
+            ),
+            Verse(
+                number: 13,
+                text: "spiritual powers, and radiant wisdom. It is equal to the buddhas' mind above and identical to sentient beings below, but due to deluded actions since beginningless time,",
+                pinyin: "shén tōng guāng zhì shàng děng fó xīn xià tóng zhòng shēng wú shǐ mí yòng",
+                chinese: "神通光智上等佛心下同眾生無始迷用"
+            ),
+            Verse(
+                number: 14,
+                text: "this tranquil radiance has been obstructed. We were confused upon encountering situations and each thought that arose was fettered. Within the Dharma of equality,",
+                pinyin: "cǐ jìng guāng zhàng suì yù jìng mí niàn qǐ jì fă jiè píng děng",
+                chinese: "此寂光障遂遇境迷念起即繫法界平等"
+            ),
+            Verse(
+                number: 15,
+                text: "we gave rise to thoughts of self versus others. With attachments and wrong views as the foundation and our bodies and speech as the conditions,",
+                pinyin: "qǐ zì tā xiǎng yǐ ài jiàn wéi běn shēn kǒu wéi yuán",
+                chinese: "起自他想以愛見為本身口為緣"
+            ),
+            Verse(
+                number: 16,
+                text: "we left no transgression undone among the various states of existence. We committed the ten evils and five grave transgressions, slandered the Dharma and slandered people,",
+                pinyin: "zhū qù wú zuì bù zuò shí è wǔ nì huǐ fǎ huǐ rén",
+                chinese: "諸趣無罪不作十惡五逆謗法謗人"
+            ),
+            Verse(
+                number: 17,
+                text: "violated precepts and violated fasts, destroyed stūpas and ruined temples, stole the Sangha's property, defiled the pure practice of celibacy,",
+                pinyin: "pò jiè pò zhāi huǐ tǎ huǐ sì qiè sēng wù wū pí nà xíng",
+                chinese: "破戒破齋毀塔毀寺竊僧物汙梵行"
+            ),
+            Verse(
+                number: 18,
+                text: "and pillaged and plundered the monastery's food, drink, finances, and property. A thousand buddhas appeared in the world, but we did not know of repentance and reform.",
+                pinyin: "qiè duó sì cái shí wù cái bǎo qiān fó chū shì bù zhī chàn huǐ",
+                chinese: "竊奪寺財食五財寶千佛出世不知懺悔"
+            ),
+            Verse(
+                number: 19,
+                text: "Transgressions like these are limitless and boundless. Shedding this present body and life,",
+                pinyin: "chàn huǐ rú shì děng zuì wú liàng wú biān shě zĩ xíng mìng",
+                chinese: "懺悔·如是等罪・無量無邊·捨茲形命"
+            ),
+            Verse(
+                number: 20,
+                text: "we fall into the three lower realms together and undergo myriad sufferings. Furthermore, during this present life, we are tormented by various afflictions,",
+                pinyin: "hé duò sân tú bèi yīng wàn kŭ fù yú xiàn shì zhòng năo jiāo",
+                chinese: "合墮三途・備嬰萬苦,復於現世 眾惱交"
+            ),
+            Verse(
+                number: 21,
+                text: "or are bound by grave ailments, buffeted by external conditions, and are obstructed from the Path,",
+                pinyin: "jiān huò è jí yíng chán tā yuán bì pò zhàng yú dào fă bù",
+                chinese: "煎或惡疾縈纏・他緣逼迫・障於道法・不"
+            ),
+            Verse(
+                number: 22,
+                text: "preventing us from practicing and cultivating. Now, we have encountered the",
+                pinyin: "dé xūn xiū jīn yù",
+                chinese: "得熏修·今遇"
+            ),
+            Verse(
+                number: 23,
+                text: "perfect Great Compassion Dhāraṇī, which can swiftly extinguish and eradicate such transgressions and obstacles.",
+                pinyin: "dà bēi yuán mǎn shén zhòu sù néng miè chú rú sĩ zuì zhàng",
+                chinese: "大悲圓滿神 咒・速能滅除·如斯罪障・"
+            ),
+            Verse(
+                number: 24,
+                text: "Thus, today we sincerely recite and uphold it. Seeking refuge in and facing",
+                pinyin: "gù yú jīn rì zhì xīn sòng chí guī xiàng",
+                chinese: "故於今日·至心誦持·歸向"
+            ),
+            Verse(
+                number: 25,
+                text: "Avalokiteśvara Bodhisattva and the Great Teachers of the ten directions, we bring forth the bodhi mind and cultivate the practice of dhāraṇīs.",
+                pinyin: "guān shì yīn pú sà jí shí fāng dà shĩ fā pú tí xīn xiū zhēn yán",
+                chinese: "觀世音菩薩·及十方 大師‧發菩提心·修真言"
+            ),
+            Verse(
+                number: 26,
+                text: "Along with all sentient beings, we confess our many transgressions and seek repentance and reform,",
+                pinyin: "hèng yũ zhū zhòng shēng fã lù zhòng zuì qiú qĩ chàn hui bì",
+                chinese: "行・與諸眾 生 ·發露眾罪・求乞懺悔‧畢"
+            ),
+            Verse(
+                number: 27,
+                text: "wishing that these may be completely dissolved and eradicated.",
+                pinyin: "jìng xiāo chú wéi yuàn",
+                chinese: "竟消除・唯願"
+            ),
+            Verse(
+                number: 28,
+                text: "O, Great Compassion, Avalokiteśvara Bodhisattva-Mahāsattva! Protect and hold us with your thousand hands; illuminate and watch over us with your thousand eyes!",
+                pinyin: "dà bēi guān shì yīn pú sà mó hē sà qiān shòu hù chí qiān yăn",
+                chinese: "大悲觀世音菩薩摩訶薩・千手護持・千眼"
+            ),
+            Verse(
+                number: 29,
+                text: "Cause our internal and external obstructive conditions to be extinguished and tranquil and both our own and others' vows and practices to be perfectly accomplished;",
+                pinyin: "zhào jiàn lìng wǒ děng nèi wài zhàng yuán jì miè zì tā hèng yuàn",
+                chinese: "照見令我等內外障緣寂滅・自他行願"
+            ),
+            Verse(
+                number: 30,
+                text: "cause us to reveal our original [natures] and understand it upon seeing it [so that we are able to] subdue all demons and those of other paths; cause our three karmas to be diligent in",
+                pinyin: "yuán chéng kāi běn jiàn zhī zhì zhū mó wài sān yè jìng jìn xiū",
+                chinese: "圓成・開本見知・制諸魔外・三業精進・修"
+            ),
+            Verse(
+                number: 31,
+                text: "cultivating the causes [for rebirth] in the Pure Land so that when we shed this body, we will not have any other inclinations,",
+                pinyin: "jìng tù yīn zhì shě cǐ shēn gèng wú tã qù",
+                chinese: "淨土因・至捨此身・更無他趣・"
+            ),
+            Verse(
+                number: 32,
+                text: "and we will surely attain rebirth in Amitabha Buddha's Pure Land of Ultimate Bliss, where we",
+                pinyin: "jué dìng dé shēng ō mí tuó fó jí lè shì jiè qīn chéng gòng",
+                chinese: "決定得生 ·阿彌陀佛·極樂世界・親承供"
+            ),
+            Verse(
+                number: 33,
+                text: "will personally serve and present offerings to Great Compassion, Avalokiteśvara. Replete in all dhāraṇīs, we will extensively liberate the host of beings so that they may",
+                pinyin: "yăng dà bēi guān yīn jù zhū zăng chí guăng dù qún pǐn jiē",
+                chinese: "養・大悲觀音・具諸總持 廣度群品・皆"
+            ),
+            Verse(
+                number: 34,
+                text: "all leave the wheel of suffering and reach the ground of wisdom together.",
+                pinyin: "chū kŭ lún tóng dào zhì dì",
+                chinese: "出苦輪同到智地。"
+            ),
+            Verse(
+                number: 35,
+                text: "Having repented and reformed as well as made vows, venerate and seek refuge in the Triple Gem!",
+                pinyin: "chàn huǐ fā yuàn yǐ guì mìng lĩ sân bão",
+                chinese: "懺悔發願巳・皈命禮三寶"
+            )
+        ]
+        for verse in gcChapter7.verses {
+            verse.chapter = gcChapter7
+        }
+        
+        let gcChapter8 = Chapter(number: 8, title: "Final Prostrations and Closing")
+        gcChapter8.text = greatCompassionRepentance
+        gcChapter8.verses = [
+            Verse(
+                number: 1,
+                text: "Homage to the Buddhas of the ten directions.",
+                pinyin: "ná mó shí fāng fó",
+                chinese: "南無十方佛"
+            ),
+            Verse(
+                number: 2,
+                text: "Homage to the Dharma of the ten directions.",
+                pinyin: "ná mó shí fāng fă",
+                chinese: "南無十方法"
+            ),
+            Verse(
+                number: 3,
+                text: "Homage to the Sangha of the ten directions.",
+                pinyin: "ná mó shí fāng sēng",
+                chinese: "南無十方僧"
+            ),
+            Verse(
+                number: 4,
+                text: "Homage to Our Teacher, Śākyamuni Buddha.",
+                pinyin: "ná mó běn shī shì jiā móu ní fó",
+                chinese: "南無本師釋迦牟尼佛"
+            ),
+            Verse(
+                number: 5,
+                text: "Homage to Amitābha Buddha.",
+                pinyin: "ná mó ō mí tuó fó",
+                chinese: "南無阿彌陀佛"
+            ),
+            Verse(
+                number: 6,
+                text: "Homage to Sahasraprabharaja-dhyāna-bhūmika Buddha.",
+                pinyin: "ná mó qiān guāng wáng jìng zhù fó",
+                chinese: "南無千光王靜住佛"
+            ),
+            Verse(
+                number: 7,
+                text: "Homage to the Great Dhāraṇī of the Vast, Perfected, Unhindered Mind of Great Compassion.",
+                pinyin: "ná mó guăng dà yuán mǎn wú ài dà bēi xīn dà tuó luó ní",
+                chinese: "南無廣大圓滿無礙大悲心大陀羅尼"
+            ),
+            Verse(
+                number: 8,
+                text: "Homage to Thousand-Handed and Thousand-Eyed Avalokiteśvara Bodhisattva.",
+                pinyin: "ná mó qiān shǒu qiān yăn guān shì yīn pú sà",
+                chinese: "南無千手千眼觀世音菩薩"
+            ),
+            Verse(
+                number: 9,
+                text: "Homage to Mahāsthāmaprāpta Bodhisattva.",
+                pinyin: "ná mó dà shì zhì pú sà",
+                chinese: "南無大勢至菩薩"
+            ),
+            Verse(
+                number: 10,
+                text: "Homage to Dhāraṇī Bodhisattva.",
+                pinyin: "ná mó zǒng chí wáng pú sà",
+                chinese: "南無總持王菩薩"
+            ),
+            Verse(
+                number: 11,
+                text: "Homage to the Eternally Abiding Triple Gem of the Mahāyāna!",
+                pinyin: "ná mó dà chèng cháng zhù sān bǎo (3x)",
+                chinese: "南無大乘常住三寶"
+            ),
+            Verse(
+                number: 12,
+                text: "[Declaration of Dedicative Report]",
+                pinyin: "xuān dú wén shū",
+                chinese: "宣讀文疏"
+            ),
+            Verse(
+                number: 13,
+                text: "Homage to the Noble Adornment of the Buddha's Unsurpassed Bodhi!",
+                pinyin: "ná mó zhuāng yán wú shàng fó pú tí (3x)",
+                chinese: "南無 莊嚴無上佛菩提"
+            ),
+            Verse(
+                number: 14,
+                text: "[Three Refuges]",
+                pinyin: "sān guī yī wén",
+                chinese: "三皈依文"
+            ),
+            Verse(
+                number: 15,
+                text: "I seek refuge in the Buddha, wishing that all sentient beings",
+                pinyin: "zì guī yī fó dāng yuàn zhòng shēng",
+                chinese: "自皈依佛·當願眾 生"
+            ),
+            Verse(
+                number: 16,
+                text: "understand the great Path and make the greatest vow!",
+                pinyin: "tǐ jiě dà dào fā wú shàng xīn",
+                chinese: "體解大道·發無上心。"
+            ),
+            Verse(
+                number: 17,
+                text: "I seek refuge in the Dharma, wishing that all sentient beings",
+                pinyin: "zì guī yī fǎ dāng yuàn zhòng shēng",
+                chinese: "自皈依法・當願眾 生"
+            ),
+            Verse(
+                number: 18,
+                text: "deeply study the sūtra treasury and acquire an ocean of wisdom!",
+                pinyin: "shēn rù jīng zàng zhì huì rú hǎi",
+                chinese: "深入經藏·智慧如海。"
+            ),
+            Verse(
+                number: 19,
+                text: "I seek refuge in the Sangha, wishing that all sentient beings",
+                pinyin: "zì guī yī sēng dāng yuàn zhòng shēng",
+                chinese: "自皈依僧 當願眾 生"
+            ),
+            Verse(
+                number: 20,
+                text: "lead the congregation without any obstruction!",
+                pinyin: "tǒng lǐ dà zhòng yí qiè wú ài",
+                chinese: "統理大眾 切無礙。"
+            ),
+            Verse(
+                number: 21,
+                text: "Noble Avalokiteśvara is an ancient buddha's manifestation.",
+                pinyin: "shèng guān zì zài zàn",
+                chinese: "聖觀自在讚"
+            ),
+            Verse(
+                number: 22,
+                text: "With one thousand hands and eyes, he reveals the mind of compassion",
+                pinyin: "yī qiān shǒu yǎn zhăn cí xīn",
+                chinese: "一千手眼展慈心"
+            ),
+            Verse(
+                number: 23,
+                text: "as he rescues those drowning in the nine realms.",
+                pinyin: "jiǔ jiè bá chén lún",
+                chinese: "九界拔沉淪"
+            ),
+            Verse(
+                number: 24,
+                text: "The profound merits of the dhāraṇī brings myriads of virtues.",
+                pinyin: "shén zhòu gōng shēn wàn shàn xĩ pián zhēn",
+                chinese: "神咒功深萬善悉駢臻"
+            ),
+            Verse(
+                number: 25,
+                text: "Homage to Bestower of Fearlessness Bodhisattva-Mahāsattva!",
+                pinyin: "ná mó shì wú wèi pú sà mó hē sà (3x)",
+                chinese: "南無施無畏菩薩摩訶薩"
+            ),
+            Verse(
+                number: 26,
+                text: "[Three Prostrations to the Buddha + Bow]",
+                pinyin: "lǐ fó sān bài wèn xùn",
+                chinese: "禮佛三拜、問訊"
+            ),
+            Verse(
+                number: 27,
+                text: "[Address by Officiant]",
+                pinyin: "zhǔ fǎ kāi shì",
+                chinese: "主法開示"
+            ),
+            Verse(
+                number: 28,
+                text: "Liturgy of the Great Compassion Repentance of the Thousand-Handed and Thousand-Eyed One | The End",
+                pinyin: "",
+                chinese: ""
+            )
+        ]
+        for verse in gcChapter8.verses {
+            verse.chapter = gcChapter8
+        }
+        
+        greatCompassionRepentance.chapters.append(contentsOf: [gcChapter1, gcChapter2, gcChapter3, gcChapter4, gcChapter5, gcChapter6, gcChapter7, gcChapter8])
+        context.insert(greatCompassionRepentance)
+        }
+        
+        // Medicine Buddha Sutra
+        if shouldLoadMedicineBuddhaSutra {
+        let medicineBuddhaSutra = BuddhistText(
+            title: "Medicine Buddha Sutra (藥師經)",
+            author: "Buddha",
+            textDescription: "The Medicine Buddha of Pure Crystal Radiance Sutra (藥師琉璃光如來本願功德經)",
+            category: "Sutra",
+            coverImageName: "MedicineBuddhaSutra"
+        )
+        
+        let mbChapter1 = Chapter(number: 1, title: "Incense Praise")
+        mbChapter1.text = medicineBuddhaSutra
+        mbChapter1.verses = [
+            Verse(
+                number: 1,
+                text: "Incense burning in the censer,",
+                pinyin: "lú xiāng zhà rè",
+                chinese: "爐香乍熱"
+            ),
+            Verse(
+                number: 2,
+                text: "All space permeated with fragrance.",
+                pinyin: "fǎ jiè méng xūn",
+                chinese: "法界蒙熏"
+            ),
+            Verse(
+                number: 3,
+                text: "The Buddhas perceive it from every direction,",
+                pinyin: "zhū fó hǎi huì xī yáo wén",
+                chinese: "諸佛海會悉遙聞"
+            ),
+            Verse(
+                number: 4,
+                text: "Auspicious clouds gather everywhere.",
+                pinyin: "suí chù jié xiáng yún",
+                chinese: "隨處結祥雲"
+            ),
+            Verse(
+                number: 5,
+                text: "With our sincerity,",
+                pinyin: "chéng yì fāng yīn",
+                chinese: "誠意方殷"
+            ),
+            Verse(
+                number: 6,
+                text: "The Buddhas manifest themselves in their entirety.",
+                pinyin: "zhū fó xiàn quán shēn",
+                chinese: "諸佛現全身"
+            ),
+            Verse(
+                number: 7,
+                text: "We take refuge in the Bodhisattvas-Mahasattvas.",
+                pinyin: "nán mó xiāng yún gài pú sà mó hē sà",
+                chinese: "南無香雲蓋菩薩摩訶薩"
+            )
+        ]
+        for verse in mbChapter1.verses {
+            verse.chapter = mbChapter1
+        }
+        
+        let mbChapter2 = Chapter(number: 2, title: "Sutra Opening Verse")
+        mbChapter2.text = medicineBuddhaSutra
+        mbChapter2.verses = [
+            Verse(
+                number: 1,
+                text: "The unexcelled, most profound, and exquisitely wondrous Dharma,",
+                pinyin: "wú shàng shèn shēn wēi miào fǎ",
+                chinese: "無上甚深微妙法"
+            ),
+            Verse(
+                number: 2,
+                text: "Is difficult to encounter throughout hundreds of thousands of millions of kalpas.",
+                pinyin: "bǎi qiān wàn jié nán zāo yù",
+                chinese: "百千萬劫難遭遇"
+            ),
+            Verse(
+                number: 3,
+                text: "Since we are now able to see, hear, receive and retain it,",
+                pinyin: "wǒ jīn jiàn wén dé shòu chí",
+                chinese: "我今見聞得受持"
+            ),
+            Verse(
+                number: 4,
+                text: "May we comprehend the true meaning of the Tathagata.",
+                pinyin: "yuàn jiě rú lái zhēn shí yì",
+                chinese: "願解如來真實義"
+            )
+        ]
+        for verse in mbChapter2.verses {
+            verse.chapter = mbChapter2
+        }
+        
+        let mbChapter3 = Chapter(number: 3, title: "Introduction")
+        mbChapter3.text = medicineBuddhaSutra
+        mbChapter3.verses = [
+            Verse(
+                number: 1,
+                text: "Thus have I heard. One time, while traveling and teaching throughout several countries, the Bhagavat arrived at the magnificent city of Vaisali. There he sat beneath the Joyful Tree of Musical Breezes and was joined by a great multitude of beings, both human and non-human.",
+                pinyin: "rú shì wǒ wén: yī shí, bó qié fàn yóu huà zhū guó, zhì guǎng yán chéng, zhù lè yīn shù xià. yǔ",
+                chinese: "如是我聞: 一時, 薄伽梵遊化諸國, 至廣嚴城, 住樂音樹下。與"
+            ),
+            Verse(
+                number: 2,
+                text: "In attendance was a retinue of highly cultivated bhiksus, eight thousand in number. Accompanying them was a throng of bodhisattvas and great bodhisattvas, thirty-six thousand in total.",
+                pinyin: "dà bì chú zhòng bā qiān rén jù; pú sà mó hē sà sān wàn liù",
+                chinese: "大苾芻眾八千人俱; 菩薩摩訶薩三萬六"
+            ),
+            Verse(
+                number: 3,
+                text: "Also in attendance were kings and their subjects, brahmins, laity, and a constellation of heavenly beings. This great congregation respectfully gathered around the Buddha to hear his teaching.",
+                pinyin: "qiān jí guó wáng, dà chén, pó luó mén、jū shì, tiān、lóng bā bù, rén、fēi rén děng, wú liàng dà zhòng, gōng jìng wéi rào, ér wéi shuō fǎ。",
+                chinese: "千及國王, 大臣, 婆羅門、居士, 天、龍八部, 人、非人等, 無量大眾, 恭敬圍繞, 而為說法。"
+            ),
+            Verse(
+                number: 4,
+                text: "At that time, the Dharma Prince Manjusri, with the Buddha's omniscient power, arose from his seat and came before the Buddha. Baring his right shoulder and bowing upon his right knee with joined palms, the young prince implored, \"World-Honored One, we wish that you would speak to us about the various Buddhas' names and honorary titles, their great vows, and their magnificent virtues.",
+                pinyin: "ěr shí, màn shū shì lì fǎ wáng zǐ, chéng fó wēi shén, cóng zuò ér qǐ, piān tǎn yī jiān, yòu xī zhuó dì, xiàng bó qié fàn, qū gōng hé zhǎng。bái yán: 「shì zūn! wéi yuàn yǎn shuō rú shì xiàng lèi zhū fó míng hào, jí běn dà yuàn shū shèng",
+                chinese: "爾時, 曼殊室利法王子, 承佛威神, 從座而起, 偏袒一肩, 右膝著地, 向薄伽梵, 曲躬合掌。白言: 「世尊! 惟願演說如是相類諸佛名號, 及本大願殊勝"
+            ),
+            Verse(
+                number: 5,
+                text: "We hope that all who are within hearing of these words can become free from karmic obstructions. Moreover, for the sake of sentient beings in the Period of Semblance Dharma, we hope these beneficial words can make them truly happy.\"",
+                pinyin: "gōng dé, lìng zhū wén zhě, yè zhàng xiāo chú, wéi yù lì lè xiàng fǎ zhuǎn shí, zhū yǒu qíng gù」",
+                chinese: "功德,令諸聞者,業障消除,為欲利樂像法轉時,諸有情故」"
+            ),
+            Verse(
+                number: 6,
+                text: "Upon hearing this request, the World-Honored One praised Manjusri, \"Excellent, excellent, Manjusri! It is out of your deep and heartfelt compassion for sentient beings that you have implored me to speak of the Buddhas' names and titles, original vows, and virtues that accompany them. This is in order to release sentient beings from their entanglements in karmic obstructions and also to bring peace and joy to those in the Period of Semblance Dharma. Now, for your benefit, I am going to speak. You should listen attentively and contemplate carefully what I am going to say.\"",
+                pinyin: "ěr shí, shì zūn zàn màn shū shì lì tóng zǐ yán: 「shàn zāi! shàn zāi! màn shū shì lì rú yǐ dà bēi, quàn qǐng wǒ shuō zhū fó míng hào、běn yuàn gōng dé, wéi bá yè zhàng suǒ chán yǒu qíng, lì yì ān lè xiàng fǎ zhuǎn shí zhū yǒu qíng gù。gù rú jīn dì tīng, jí shàn sī",
+                chinese: "爾時, 世尊讚曼殊室利童子言: 「善哉!善哉!曼殊室利汝以大悲,勸請我說諸佛名號、本願功德,為拔業障所纏有情,利益安樂像法轉時諸有情故。故汝今諦聽,極善思"
+            ),
+            Verse(
+                number: 7,
+                text: "\"Splendid!\" replied Manjusri. \"We are most happy to hear from you.\"",
+                pinyin: "wéi, dāng wéi rú shuō。」màn shū shì",
+                chinese: "惟,當為汝說。」曼殊室"
+            ),
+            Verse(
+                number: 8,
+                text: "The Buddha said to Manjusri: \"In the east, beyond Buddha lands as numerous as the grains of sand in ten Ganges Rivers, there exists a Buddha world called 'The Land of Pure Crystal,' where the 'Medicine Buddha of Pure Crystal Radiance' presides. Manjusri, this World-Honored One has three names. He is called 'Medicine Buddha of Pure Crystal Radiance,' 'Worthy One,' 'Truly All-Knowing,' 'Perfect in Knowledge and Conduct,' 'Well-Gone,' 'Knower of the World,' 'Unsurpassed,' 'Tamer,' 'Teacher of Heavenly and Human Beings,' 'Awakened One,' and 'Bhagavat.'\"",
+                pinyin: "",
+                chinese: ""
+            )
+        ]
+        for verse in mbChapter3.verses {
+            verse.chapter = mbChapter3
+        }
+        
+        let mbChapter4 = Chapter(number: 4, title: "The Twelve Great Vows")
+        mbChapter4.text = medicineBuddhaSutra
+        mbChapter4.verses = [
+            Verse(
+                number: 1,
+                text: "Manjusri, twelve great vows evolved from the heart of the World-Honored Medicine Buddha of Pure Crystal Radiance as he advanced upon the bodhisattva path. These vows were made with the heartfelt wish that all sentient beings might fulfill their aspirations.",
+                pinyin: "shì lì! bǐ shì zūn yào shī liú lí guāng rú lái, běn xíng pú sà dào shí, fā shí èr dà yuàn, lìng zhū yǒu qíng, suǒ qiú jié dé。",
+                chinese: "室利!彼世尊藥師琉璃光如來,本行菩薩道時,發十二大願,令諸有情,所求皆得。"
+            ),
+            Verse(
+                number: 2,
+                text: "The first vow is this: 'In a future lifetime, may I attain Anuttara-Samyak-Sambodhi. Thus, my body shall be one of bright radiance, shining forth in blazing illumination, without measure, boundary, or limitation, lighting up innumerable worlds. This body will be adorned with the thirty-two marks of excellence and the eighty noble qualities, which accompany the form of the True Man. May all sentient beings be likewise brilliant and adorned in body, completely equal to me.'",
+                pinyin: "dì yī dà yuàn: yuàn wǒ lái shì dé ā nòu duō luó sān miǎo sān pú tí shí, zì shēn guāng míng, chì rán zhào yào wú liàng wú shù wú biān shì jiè, yǐ sān shí èr dà zhàng fū xiàng、bā shí suí xíng, zhuāng yán qí shēn; lìng yī qiè yǒu",
+                chinese: "第一大願:願我來世得阿耨多羅三藐三菩提時,自身光明,熾然照曜無量無數無邊世界,以三十二大丈夫相、八十隨形,莊嚴其身;令一切有"
+            ),
+            Verse(
+                number: 3,
+                text: "The second vow is this: 'In a future lifetime, upon my enlightenment, may my body be as clear as pure crystal, flawless and impeccable within and without. May it be of boundless radiance and majestic virtue, of serene abiding goodness. May this body be a magnificent blazing net of glory, more brilliant than the sun and moon, able to embrace and awaken even those beings caught in the depths of profound darkness and gloom. Thus, shall all beings accomplish their endeavors according to their intentions.'",
+                pinyin: "qíng, rú wǒ wú yì。dì èr dà yuàn: yuàn wǒ lái shì dé pú tí shí, shēn rú liú lí, nèi wài míng chè, jìng wú xiá huì, guāng míng guǎng dà; gōng dé wēi wēi, shēn shàn ān zhù, yàn wǎng zhuāng yán, guò yú rì yuè; yōu míng zhòng shēng, xī méng kāi xiǎo, suí yì suǒ qù, zuò zhū shì yè。",
+                chinese: "情,如我無異。第二大願:願我來世得菩提時,身如琉璃,內外明徹,淨無瑕穢,光明廣大;功德巍巍,身善安住,焰網莊嚴,過於日月;幽冥眾生,悉蒙開曉,隨意所趣,作諸事業。"
+            ),
+            Verse(
+                number: 4,
+                text: "The third vow is this: 'In a future lifetime, upon my enlightenment, may I enable all beings to gain an abundance of things most useful and enjoyable, eliminating all scarcity or want. This I will accomplish through boundless wisdom and skillful means beyond measure.'",
+                pinyin: "dì sān dà yuàn: yuàn wǒ lái shì dé pú tí shí, yǐ wú liàng",
+                chinese: "第三大願:願我來世得菩提時,以無量"
+            ),
+            Verse(
+                number: 5,
+                text: "The fourth vow is this: 'In a future lifetime, upon my enlightenment, may all sentient beings choose to follow the peaceful way of bodhi instead of traveling the path of evil. If there are beings who are proceeding via the sravaka or pratyeka-buddha vehicle, may they become engaged by means of the great vehicle.'",
+                pinyin: "",
+                chinese: ""
+            ),
+            Verse(
+                number: 6,
+                text: "The fifth vow is this: 'In a future lifetime, upon my enlightenment, may sentient beings beyond number practice wholesome living and uphold all precepts according to my teachings. Through the commitment to actualize the Dharma, may they accomplish the Tri-Vidhani Silani (three categories of bodhisattva precepts). When beings violate any precept, their purity can be restored and they can avoid falling into the suffering realms simply upon hearing my name.'",
+                pinyin: "dì wǔ dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò yǒu wú liàng wú biān yǒu qíng, yú wǒ fǎ zhōng xiū xíng fàn xíng, yī qiè jiē lìng dé bù quē jiè, jù sān jù jiè。shè yǒu huǐ fàn, wén wǒ míng yǐ, huán dé qīng jìng, bù duò è qù。",
+                chinese: "第五大願:願我來世得菩提時,若有無量無邊有情,於我法中修行梵行,一切皆令得不缺戒,具三聚戒。設有毀犯,聞我名已,還得清淨,不墮惡趣。"
+            ),
+            Verse(
+                number: 7,
+                text: "The sixth vow is this: 'In a future lifetime, upon my enlightenment, I vow to aid all sentient beings who suffer from any form of malady. I vow to relieve those whose bodies are deformed, who lack their complete sense organs, who lack beauty and appeal, or who are simple-minded or foolishly stubborn. Those who are blind, deaf, raspy-voiced, or who suffer from any other physical or mental affliction, upon hearing my name, may they all be restored to perfect health and wholeness.'",
+                pinyin: "dì liù dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò zhū yǒu qíng, qí shēn xià liè、zhū gēn bù jù, chǒu lòu、wán yú、máng、lóng、yīn、yá、luán、bì、bèi lóu、bái lái、diān diàn kuáng, zhǒng zhǒng bìng kǔ; wén wǒ míng yǐ, yī qiè jiē dé duān zhèng xiá huì, zhū gēn wán jù, wú zhū jí kǔ。",
+                chinese: "第六大願:願我來世得菩提時,若諸有情,其身下劣、諸根不具,醜陋、頑愚、盲、聾、瘠、癌、攣、躄、背僂、白癲癲狂,種種病苦;聞我名已,一切皆得端正點慧,諸根完具,無諸疾苦。"
+            ),
+            Verse(
+                number: 8,
+                text: "The seventh vow is this: 'In a future lifetime, upon my enlightenment, if there are any sentient beings who are tormented by illness, who have no hope of release or respite from their suffering, who are without doctors or medicine, or who have no family members or other caregivers to assist them, who are homeless or impoverished, or are suffering in any way, I vow that once the sound of my name has penetrated their ears, all illness shall cease, and they shall find serene contentment in body and mind. They shall be surrounded by family and caregivers and all that they have previously lacked shall become abundantly available to them, even unto the actualization of Buddhahood.'",
+                pinyin: "dì qī dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò zhū yǒu qíng, zhòng bìng bī qiè, wú jiù wú guī, wú yī wú yào, wú qīn wú jiā, pín qióng duō kǔ。wǒ zhī míng hào, yī jīng qí ěr, zhòng bìng xī",
+                chinese: "第七大願:願我來世得菩提時,若諸有情,眾病逼切,無救無歸,無醫無藥,無親無家,貧窮多苦。我之名號,一經其耳,眾病悉"
+            ),
+            Verse(
+                number: 9,
+                text: "The eighth vow is this: 'In a future lifetime, upon my enlightenment, if there are any women who feel coerced or oppressed by the many disadvantages of the female form and have given rise to the desire to let go of that form, they shall, after hearing my name be transformed into the male form. Accompanying this form are all the characteristics of the true man, even unto the attainment of Buddhahood.'",
+                pinyin: "dì bā dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò yǒu nǚ rén, wéi nǚ bǎi è zhī suǒ bī nǎo, jí shēng yàn lí yuàn shě nǚ shēn。wén wǒ míng yī qiè jiē dé zhuǎn nǚ chéng nán, jù zhàng fū xiàng nǎi zhì zhèng dé wú shàng pú tí。",
+                chinese: "第八大願:願我來世得菩提時,若有女人,為女百惡之所逼惱,極生厭離願捨女身。聞我名一切皆得轉女成男,具丈夫相乃至證得無上菩提。"
+            ),
+            Verse(
+                number: 10,
+                text: "The ninth vow is this: 'In a future lifetime, upon my enlightenment, all who are caught in the net of evil shall be released from their entanglement in heterodox practices. If there are those who have fallen into the dark forest of evil views, they shall all become established in the correct perspective and gradually assume practice of all the bodhisattvas' disciplines, quickly actualizing Buddhahood.'",
+                pinyin: "dì jiǔ dà yuàn: yuàn wǒ lái shì dé pú tí shí, lìng zhū yǒu qíng, chū mó juàn wǎng, jiě tuō yī qiè wài dào chán fù; ruò duò zhǒng zhǒng è jiàn chóu lín, jiē dāng yǐn shè zhì yú zhèng jiàn, jiàn lìng xiū xí zhū pú sà xíng, sù zhèng wú shàng zhèng děng pú tí。",
+                chinese: "第九大願:願我來世得菩提時,令諸有情,出魔絹網,解脫一切外道纏縛;若墮種種惡見稠林,皆當引攝置於正見,漸令修習諸菩薩行,速證無上正等菩提。"
+            ),
+            Verse(
+                number: 11,
+                text: "The tenth vow is this: 'In a future lifetime, upon my enlightenment, if there are any sentient beings who, due to the enforcement of local laws, find themselves sentenced to flogging, incarceration, torture, execution, or any other manner of brutal punishment, they shall be aided by hearing my name. For those who are insulted, humiliated, or in abject misery or who are oppressed by burning anxiety, suffering in both body and mind, if they hear my name, due to the power of my awe-inspiring spiritual élan, all shall gain release from their suffering and woes.'",
+                pinyin: "dì shí dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò zhū yǒu qíng, wáng fǎ suǒ lù, shéng fù biān tà, xì bì láo yù, huò dāng xíng lù; jí yú wú liàng zāi nàn líng rǔ, bēi chóu jiān bī, shēn xīn shòu kǔ; ruò wén wǒ míng, yǐ wǒ fú dé wēi shén lì gù, jiē dé jiě tuō yī qiè yōu kǔ。",
+                chinese: "第十大願:願我來世得菩提時,若諸有情,王法所錄,繩縛鞭撻,繫閉牢獄,或當刑戮;及餘無量災難凌辱,悲愁煎逼,身心受苦;若聞我名,以我福德威神力故,皆得解脫一切憂苦。"
+            ),
+            Verse(
+                number: 12,
+                text: "The eleventh vow is this: 'In a future lifetime, upon my enlightenment, if there are any sentient beings who commit wrongdoings due to the agony of hunger and thirst, they shall be aided by hearing my name and concentrating on it. First, by providing exquisite delicacies, I will bring about their complete bodily satisfaction and contentment. Physically sated, they may then enjoy the wondrous flavor of the Dharma and become established in spiritual satisfaction and contentment.'",
+                pinyin: "dì shí yī dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò zhū yǒu qíng, jī kě suǒ nǎo, wéi qiú shí gù, zào zhū è yè, dé wén wǒ míng, zhuān niàn shòu chí, wǒ dāng xiān yǐ shàng miào yǐn shí, bǎo zú qí shēn; hòu yǐ fǎ wèi, bì jìng ān lè ér jiàn lì zhī。",
+                chinese: "第十一大願:願我來世得菩提時,若諸有情,饑渴所惱,為求食故,造諸惡業,得聞我名,專念受持,我當先以上妙飲食,飽足其身;後以法味,畢竟安樂而建立之。"
+            ),
+            Verse(
+                number: 13,
+                text: "The twelfth vow is this: 'In a future lifetime, upon my enlightenment, if there are any sentient beings who are without clothing due to poverty, who suffer day and night the afflictions of extreme heat and cold and the torment of insects, they shall be aided by hearing my name and concentrating on it. They shall be afforded that which they wish: the acquisition of many kinds of exquisite clothing, precious gems for adornment, flowered hair ornaments, perfumed ointments, and musical entertainment. The full enjoyment of all these things shall evoke their complete satisfaction and contentment.'",
+                pinyin: "dì shí èr dà yuàn: yuàn wǒ lái shì dé pú tí shí, ruò zhū yǒu qíng, pín wú yī fú, wén méng hán rè, zhòu yè bī nǎo; ruò wén wǒ míng, zhuān niàn shòu chí, rú qí suǒ hào jí dé zhǒng zhǒng shàng miào yī fú, yì dé yī qiè bǎo zhuāng yán jù, huā mán tú xiāng, gǔ yuè zhòng jì, suí xīn suǒ wán, jiē lìng mǎn zú。",
+                chinese: "第十二大願:願我來世得菩提時,若諸有情,貧無衣服,蚊虻寒熱,晝夜逼惱;若聞我名,專念受持,如其所好即得種種上妙衣服,亦得一切寶莊嚴具,華鬘塗香,鼓樂眾伎,隨心所翫,皆令滿足。"
+            ),
+            Verse(
+                number: 14,
+                text: "Manjusri, these are the twelve supremely subtle and wonderful vows of the 'World-Honored Medicine Buddha of Pure Crystal Radiance, Worthy One, Truly All-Knowing' while he was practicing the bodhisattva path.",
+                pinyin: "màn shū shì lì! shì wéi bǐ shì zūn yào shī liú lí guāng rú lái、yìng、zhèng děng jué, xíng pú sà dào shí, suǒ fā shí èr wēi miào shàng yuàn。",
+                chinese: "曼殊室利!是為彼世尊藥師琉璃光如來、應、正等覺,行菩薩道時,所發十二微妙上願。"
+            )
+        ]
+        for verse in mbChapter4.verses {
+            verse.chapter = mbChapter4
+        }
+        
+        let mbChapter5 = Chapter(number: 5, title: "The Buddha Land")
+        mbChapter5.text = medicineBuddhaSutra
+        mbChapter5.verses = [
+            Verse(
+                number: 1,
+                text: "Again the Buddha said to Manjusri, \"Even in one or more kalpas, I could not finish speaking of the magnificent vows the Medicine Buddha pledged while on the bodhisattva path, nor fully describe the wonders of the pristine Buddha land he attained. I can tell you this Buddha land is infinitely pure. There are no women's forms, no lower forms of rebirth or sounds of suffering.",
+                pinyin: "fù cì, màn shū shì lì! bǐ shì zūn yào shī liú lí guāng rú lái, xíng pú sà dào shí suǒ fā dà yuàn, jí bǐ fó tǔ gōng dé zhuāng yán, wǒ ruò yī jié yú, shuō bù néng jìn。fó tǔ yī xiàng qīng nǚ rén yī wú è",
+                chinese: "復次,曼殊室利!彼世尊藥師琉璃光如來,行菩薩道時所發大願,及彼佛土功德莊嚴,我若一劫餘,說不能盡。佛土一向清女人亦無惡"
+            ),
+            Verse(
+                number: 2,
+                text: "The land is made of pure crystal with ropes of gold bordering the paths. It features magnificent palaces and pavilions with spacious windows strung with nets, all made of the seven precious gems. The virtue and magnificence of this Buddha land is no different from that of the Western Pure Land.",
+                pinyin: "yīn shēng。liú lí wéi dì, jīn shéng jiè dào, chéng、què、gōng、gé、xuān、chuāng luó wǎng, jiē qī bǎo chéng。yì rú xī fāng jí lè shì jiè, gōng dé zhuāng yán, děng wú chā bié。",
+                chinese: "音聲。琉璃為地,金繩界道,城、闕、宮、閣、軒、窗羅網,皆七寶成。亦如西方極樂世界,功德莊嚴,等無差別。"
+            ),
+            Verse(
+                number: 3,
+                text: "In this Buddha realm, there are innumerable bodhisattvas, including two bodhisattvas at the highest level, preceding Buddhahood. Their names are given as 'Radiant Sunlight Bodhisattva and Radiant Moonlight Bodhisattva.' Both bodhisattvas are skillful in upholding the Medicine Buddha's Dharma. Thus, Manjusri, all good men and women who have confidence and faith should vow to be born in this Buddha land.",
+                pinyin: "yú qí guó zhōng, yǒu èr pú sà mó hē sà: yī míng rì guāng biàn zhào, èr míng yuè guāng biàn zhào, shì bǐ wú liàng wú shù pú sà zhòng zhī shàng shǒu, cì bǔ fó chù, xī néng chí bǐ shì zūn yào shī liú lí guāng rú lái zhèng fǎ bǎo zàng。shì gù, màn shū shì lì! zhū yǒu xìn xīn shàn nán zǐ shàn nǚ rén děng, yīng dāng yuàn shēng bǐ fó shì jiè。」",
+                chinese: "於其國中,有二菩薩摩訶薩:一名日光遍照,二名月光遍照,是彼無量無數菩薩眾之上首,次補佛處,悉能持彼世尊藥師琉璃光如來正法寶藏。是故,曼殊室利!諸有信心善男子善女人等,應當願生彼佛世界。」"
+            )
+        ]
+        for verse in mbChapter5.verses {
+            verse.chapter = mbChapter5
+        }
+        
+        let mbChapter6 = Chapter(number: 6, title: "Benefits and Merits")
+        mbChapter6.text = medicineBuddhaSutra
+        mbChapter6.verses = [
+            Verse(
+                number: 1,
+                text: "Continuing in this manner, the World-Honored One said to Manjusri, \"There are sentient beings who do not know the difference between beneficial and harmful conduct. Bent on acquiring and maintaining advantages for themselves alone, they remain greedy and close-fisted, unaware of the beneficial fruit of giving. Ignorant and therefore lacking in any trust in the merit of giving, they desperately accumulate and guard their material riches.",
+                pinyin: "ěr shí, shì zūn fù gào màn shū shì lì tóng zǐ yán: 「màn shū shì lì! yǒu zhū zhòng shēng, bù shí shàn è, wéi huái tān lìn, bù zhī bù shī jí shī guǒ bào; yú chī wú zhì, guān yú xìn gēn, duō jù cái bǎo, qín jiā shǒu hù;",
+                chinese: "爾時,世尊復告曼殊室利童子言:「曼殊室利!有諸眾生,不識善惡,唯懷貪吝,不知布施及施果報;愚癡無智,關於信根,多聚財寶,勤加守護;"
+            ),
+            Verse(
+                number: 2,
+                text: "Thus, upon meeting a beggar, they experience suffering from the knowledge that they will receive nothing in return for their donation. So strong is their attachment to their riches that to part with even a portion is like parting with a portion of their own flesh. Manjusri, there are innumerable sentient beings, who being stingy and greedy, amass great resources and wealth. Yet, they are incapable of enjoying that which they have accumulated for themselves, let alone sharing any of their wealth with parents, spouses, stewards, servants, or beggars.",
+                pinyin: "jiàn qǐ zhě lái, qí xīn bù xǐ, shè bù huò yǐ ér xíng shī shí, rú gē shēn ròu, shēn shēng tòng xī。fù yǒu wú liàng qiān tān yǒu qíng, jī zī cái, yú qí zì shēn shàng bù shòu yòng, hé kuàng néng yǔ fù mǔ、qī zǐ、nú bì、zuò shǐ、jí lái qǐ zhě?",
+                chinese: "見乞者來,其心不喜,設不獲已而行施時,如割身肉,深生痛惜。復有無量慳貪有情,積資財,於其自身尚不受用,何況能與父母、妻子、奴婢、作使、及來乞者?"
+            ),
+            Verse(
+                number: 3,
+                text: "Those sentient beings who die in this frame of mind will be reborn in either the hungry ghost or animal realm. However, due to the fact that while in the human realm, they temporarily had the chance to hear the name of the Medicine Buddha, upon remembering this Buddha's name, they shall immediately be reborn in the human realm. Influenced by the memory of that past-life experience and the suffering of the lower realms, they are willing to forego the enjoyment of sensual pleasures and instead enter into activities of generosity, even praising the efforts of others who give.",
+                pinyin: "bǐ zhū yǒu qíng, cóng cǐ mìng zhōng, shēng è guǐ jiè, huò páng shēng qù。yóu xī rén jiān, céng dé zàn wén yào shī liú lí guāng rú lái míng gù, jīn zài è qù, zàn dé yì niàn bǐ rú lái míng, jí yú niàn shí, cóng bǐ chù mò, huán shēng rén zhōng。dé sù mìng niàn, wèi è qù kǔ, bù lè yù lè, hǎo xíng huì shī, zàn tàn shī zhě, yī qiè suǒ yǒu xī wú tān xī。",
+                chinese: "彼諸有情,從此命終,生餓鬼界,或傍生趣。由昔人間,曾得暫聞藥師琉璃光如來名故,今在惡趣,暫得憶念彼如來名,即於念時,從彼處沒,還生人中。得宿命念,畏惡趣苦,不樂欲樂,好行惠施,讚歎施者,一切所有悉無貪惜。"
+            ),
+            Verse(
+                number: 4,
+                text: "They are no longer attached to their possessions and are gradually willing to share parts of their bodies, if necessary, with any who request it, as well as the remainder of their wealth and possessions.",
+                pinyin: "jiàn cì shàng néng yǐ tóu mù、shǒu zú、xuè ròu、shēn fèn, shī lái qiú zhě, kuàng yú cái wù!",
+                chinese: "漸次尚能以頭目、手足、血肉、身分,施來求者,況餘財物!"
+            ),
+            Verse(
+                number: 5,
+                text: "And Manjusri, there are sentient beings who break the precepts even though they have received the Buddha's teachings about them. There are those who do not break the precepts per se, but they do, however, break rules and regulations pertaining to daily life. Then there are those who are successful in upholding the precepts and adhering to the rules and regulations of daily life, but they do not have the right view.",
+                pinyin: "「fù cì, màn shū shì lì! ruò zhū yǒu qíng, suī yú rú lái shòu zhū xué chù, ér pò shī luó; yǒu suī bù pò shī luó, ér pò guī zé; yǒu yú shī luó、guī zé, suī dé bù huài, rán huǐ zhèng jiàn;",
+                chinese: "「復次,曼殊室利!若諸有情,雖於如來受諸學處,而破尸羅;有雖不破尸羅,而破軌則;有於尸羅、軌則,雖得不壞,然毁正見;"
+            ),
+            Verse(
+                number: 6,
+                text: "Some sentient beings have the right view, but waste or avoid the opportunity to further their learning and cannot encounter the deep and profound meaning of the Buddha's teachings. Others pursue opportunities to learn, but do so with an arrogant attitude. Because this conceit obscures their minds, they still consider themselves as right and others as wrong.",
+                pinyin: "yǒu suī bù huǐ zhèng jiàn, ér qì duō wén, yú fó suǒ shuō qì jīng shēn yì, bù néng jiě liǎo; yǒu suī duō wén ér zēng shàng màn, yóu zēng shàng màn fù bì xīn gù, zì shì fēi tā, xián bàng zhèng fǎ, wéi mó bàn dǎng, rú shì yú rén, zì xíng xié jiàn, fù lìng wú liàng jù zhī yǒu qíng, duò dà xiǎn kēng。",
+                chinese: "有雖不毀正見,而棄多聞,於佛所說契經深義,不能解了;有雖多聞而增上慢,由增上慢覆蔽心故,自是非他,嫌謗正法,為魔伴黨,如是愚人,自行邪見,復令無量俱胝有情,墮大險坑。"
+            ),
+            Verse(
+                number: 7,
+                text: "This mindset leads them to criticize the Dharma and undermines their understanding of the truth. As they ignorantly slander the Dharma and incorrectly practice the Dharma, they harmfully influence others, causing them to fall into a dangerous pit. All these beings shall find themselves endlessly migrating in the lower realms.",
+                pinyin: "cǐ zhū yǒu qíng, yīng yú dì yù、páng shēng、guǐ qù, liú zhuǎn wú qióng。",
+                chinese: "此諸有情,應於地獄、傍生、鬼趣,流轉無窮。"
+            ),
+            Verse(
+                number: 8,
+                text: "However, if these beings are able to hear the name of the Medicine Buddha of Pure Crystal Radiance, they can give up their harmful practices and undertake all beneficial ones, no longer entering any lower realms.",
+                pinyin: "ruò dé wén cǐ yào shī liú lí guāng rú lái míng hào, biàn shě è xíng, xiū zhū shàn fǎ, bù duò è qù, shè yǒu bù néng shě zhū è xíng, xiū xíng shàn fǎ, duò è qù zhě, yǐ bǐ rú lái běn yuàn wēi lì, lìng qí xiàn qián zàn wén míng hào, cóng bǐ mìng zhōng, huán shēng rén qù, dé zhèng jiàn jīng jìn, shàn tiáo yì lè, biàn néng shě jiā, qù yú fēi jiā, rú lái fǎ zhōng shòu chí xué chù, wú yǒu huǐ fàn; zhèng jiàn duō wén, jiě shèn shēn yì, lí zēng shàng màn, bù bàng zhèng fǎ, bù wéi mó bàn, jiàn cì xiū xíng zhū pú sà xíng, sù dé yuán mǎn。」",
+                chinese: "若得聞此藥師琉璃光如來名號,便捨惡行,修諸善法,不墮惡趣,設有不能捨諸惡行,修行善法,墮惡趣者,以彼如來本願威力,令其現前暫聞名號,從彼命終,還生人趣,得正見精進,善調意樂,便能捨家,趣於非家,如來法中受持學處,無有毀犯;正見多聞,解甚深義,離增上慢,不謗正法,不為魔伴,漸次修行諸菩薩行,速得圓滿。」"
+            ),
+            Verse(
+                number: 9,
+                text: "Manjusri, if there are sentient beings who are stingy, greedy, jealous, boastful of themselves, and slanderous of others, they will fall into the three lower realms for innumerable thousands of years. After they have endured severe pain and suffering there, they will be born once again in the saha world, but as cows, horses, camels, or donkeys. These animals must bear heavy loads and walk long distances. Constantly subjected to whipping, thirst, and hunger, they are driven to exhaustion and anguish.",
+                pinyin: "「fù cì, màn shū shì lì! ruò zhū yǒu qíng, qiān tān jí dù, zì zàn huǐ tā, dāng duò sān è qù zhōng, wú liàng qiān suì shòu zhū jù kǔ; shòu jù kǔ yǐ, cóng bǐ mìng zhōng, lái shēng rén jiān, zuò niú、mǎ、tuó、lǘ, héng bèi biān tà, jī kě bī nǎo; yòu cháng fù zhòng, suí lù ér xíng。",
+                chinese: "「復次,曼殊室利!若諸有情,慳貪嫉妒,自讚毀他,當墮三惡趣中,無量千歲受諸劇苦;受劇苦已,從彼命終,來生人間,作牛、馬、駝、驢,恒被鞭撻,饑渴逼惱;又常負重,隨路而行。"
+            ),
+            Verse(
+                number: 10,
+                text: "Or, such beings are born as humans, but must endure life in lowly, despicable states of existence. As the servants and slaves of people, they are constantly commanded to labor for others with no freedom for themselves.",
+                pinyin: "huò dé wéi xià jiàn, zuò rén nú qū yì, héng bù zì rén。",
+                chinese: "或得為下賤,作人奴驅役,恒不自任。"
+            ),
+            Verse(
+                number: 11,
+                text: "If, however, in former lives in the human realm, they have heard the name of the Medicine Buddha of Pure Crystal Radiance and are able to remember it, they can wholeheartedly take refuge in the Buddha. Because of the strength of this Buddha's unique spiritual élan, they are liberated from all their sufferings. All their faculties are keen, and they are wise and learned, constantly seeking the superlative Dharma.",
+                pinyin: "ruò zài rén zhōng, céng wén shì zūn yào shī liú lí guāng rú lái míng hào, yóu cǐ shàn yīn, jīn fù yì niàn, zhì xīn guī yī。yǐ fó shén lì, zhòng kǔ jiě tuō, zhū gēn cōng lì, zhì huì duō wén, héng qiú shèng fǎ, cháng yù shàn yǒu, yǒng duàn mó juàn, pò wú míng ké, jié fán nǎo hé, jiě tuō yī qiè shēng、lǎo、bìng、sǐ, yōu chóu、kǔ nǎo。",
+                chinese: "若在人中,曾聞世尊藥師琉璃光如來名號,由此善因,今復憶念,至心歸依。以佛神力,眾苦解脫,諸根聰利,智慧多聞,恒求勝法,常遇善友,永斷魔羂,破無明殼,竭煩惱河,解脫一切生、老、病、死,憂愁、苦惱。"
+            ),
+            Verse(
+                number: 12,
+                text: "Again, Manjusri, if there are sentient beings who are habitually contrary and divisive, who engage in fighting and litigation, aggravating and disturbing both self and others by means of body, speech, and mind, these beings increase the occurrence of malevolent deeds. They call upon the spirits that reside in mountains, forests, trees, or tombs, such as yaksas or raksasas, who in turn may slay animals and offer up their blood and flesh in an act of sacrificial worship.",
+                pinyin: "「fù cì, màn shū shì lì! ruò zhū yǒu qíng, hào xǐ guāi lí, gèng xiāng dòu sòng, nǎo luàn zì tā, yǐ shēn yǔ yì, zào zuò zēng zhǎng zhǒng zhǒng è yè, zhǎn zhuǎn cháng wéi bù ráo yì shì, hù xiāng móu hài。gào zhào shān lín shù zhǒng děng shén; shā zhū zhòng shēng, qǔ qí xuè ròu, jì sì yào chā luó chà pó děng;",
+                chinese: "「復次,曼殊室利!若諸有情,好喜乖離,更相鬥訟,惱亂自他,以身語意,造作增長種種惡業,展轉常為不饒益事,互相謀害。告召山林樹塚等神;殺諸眾生,取其血肉,祭祀藥叉羅剎婆等;"
+            ),
+            Verse(
+                number: 13,
+                text: "Then these sentient beings write the name of the person they hold a grudge against and make an image in his or her likeness, using wizardry to cast a curse upon it. They engage in sorcery and use magical potions to harm the subject of their evil practices. They even use spells to raise the dead who, at their bidding, harm or kill the intended victim.",
+                pinyin: "shū yuàn rén míng, zuò qí xíng xiàng, yǐ è zhòu shù ér zhòu zǔ zhī; yǎn měi gǔ dào, zhòu qǐ shī guǐ, lìng duàn bǐ mìng, jí huài qí shēn。",
+                chinese: "書怨人名,作其形像,以惡咒術而咒詛之;魘魅蠱道,咒起屍鬼,令斷彼命,及壞其身。"
+            ),
+            Verse(
+                number: 14,
+                text: "However, if in the midst of harming by such means, they hear the name of the Medicine Buddha of Pure Crystal Radiance, all their vicious intentions will no longer have a harmful effect. Gradually, the compassionate mind will arise in the perpetrators and their victims, benefiting both with the presence of peace and joy. With the mind of hatred, destruction, and harm no longer present, each individual is happy and content with what he or she has received in its place. They no longer consider it necessary to abuse or invade one another, but instead find abundant mutual benefit.",
+                pinyin: "shì zhū yǒu qíng, ruò dé wén cǐ yào shī liú lí guāng rú lái míng hào, bǐ zhū è shì, xī bù néng hài。yī qiè zhǎn zhuǎn jiē qǐ cí xīn, lì yì ān lè, wú sǔn nǎo yì jí xián hèn xīn; gè gè huān yuè, yú zì suǒ shòu, shēng yú xǐ zú, bù xiāng qīn líng, hù wéi ráo yì。」",
+                chinese: "是諸有情,若得聞此藥師琉璃光如來名號,彼諸惡事,悉不能害。一切展轉皆起慈心,利益安樂,無損惱意及嫌恨心;各各歡悅,於自所受,生於喜足,不相侵凌,互為饒益。」"
+            )
+        ]
+        for verse in mbChapter6.verses {
+            verse.chapter = mbChapter6
+        }
+        
+        let mbChapter7 = Chapter(number: 7, title: "Rebirth in the Pure Land")
+        mbChapter7.text = medicineBuddhaSutra
+        mbChapter7.verses = [
+            Verse(
+                number: 1,
+                text: "Again, Manjusri, concerning the bhiksu and bhiksuni, layman and laywoman, and good men and women of pure faith, if they receive and uphold the eight purification precepts for one year or even for three months, they will have established good roots. Due to their cultivation, they wish to be reborn in Amitabha Buddha's Pure Land of Ultimate Bliss in order to hear and learn the correct Dharma. However, they may not have yet fully developed the necessary resolve to be reborn there.",
+                pinyin: "「fù cì, màn shū shì lì! ruò yǒu sì zhòng: bì chú、bì chú ní、wū bō suǒ jiā、wū bō sī jiā, jí yú jìng xìn shàn nán zǐ shàn nǚ rén děng, yǒu néng shòu chí bā fēn zhāi jiè, huò jīng yī nián, huò fù sān yuè, shòu chí xué chù, yǐ cǐ shàn gēn, yuàn shēng xī fāng jí lè shì jiè wú liàng shòu fó suǒ, tīng wén zhèng fǎ, ér wèi dìng zhě。",
+                chinese: "「復次,曼殊室利!若有四眾:苾芻、苾芻尼、鄔波索迦、鄔波斯迦,及餘淨信善男子善女人等,有能受持八分齋戒,或經一年,或復三月,受持學處,以此善根,願生西方極樂世界無量壽佛所,聽聞正法,而未定者。"
+            ),
+            Verse(
+                number: 2,
+                text: "In this circumstance, when they approach the end of life, if they hear the name of the Medicine Buddha, eight great bodhisattvas will come to their aid: Manjusri Bodhisattva, Avalokitesvara Bodhisattva, Maha Bodhisattva of Great Power to Heal and Save, Unlimited Intention Bodhisattva, Treasure of Sandalwood Flower Bodhisattva, the Medicine King Bodhisattva, the Supreme Medicine Bodhisattva, and Maitreya Bodhisattva. Gliding through the sky, they show these beings the path to the Pure Land of numerous precious multicolored blossoms, where each is instantly reborn in the heart of the flowers.",
+                pinyin: "ruò wén shì zūn yào shī liú lí guāng rú lái míng hào, lín mìng zhōng shí, yǒu bā pú sà, qí míng: wén shū shì lì pú sà、guān zì zài pú sà、dà shì zhì pú sà、wú jìn yì pú sà、bǎo tán huā pú sà、yào wáng pú sà、yào shàng pú sà、mí lè pú sà, cǐ bā pú sà, chéng kōng ér lái, shì qí dào lù, jí yú bǐ shì jiè zhǒng zhǒng zá sè zhòng bǎo huā zhōng, zì rán huà shēng。",
+                chinese: "若聞世尊藥師琉璃光如來名號,臨命終時,有八菩薩,其名:文殊師利菩薩、觀自在菩薩、大勢至菩薩、無盡意菩薩、寶檀華菩薩、藥王菩薩、藥上菩薩、彌勒菩薩,此八菩薩,乘空而來,示其道路,即於彼世界種種雜色眾寶華中,自然化生。"
+            ),
+            Verse(
+                number: 3,
+                text: "Or, if the resolve of these beings is weaker yet, they will be reborn in one of the heavenly realms. Despite this rebirth, their good roots remain intact. Therefore, after their life span in the heavenly realms, they will not be reborn in any of the lower realms, but instead will return to be born in the human realm. There they may be born as a cakravartin, a world sovereign of great virtue who effortlessly unites the four continents, peacefully establishing unlimited sentient beings in the ten good ways.",
+                pinyin: "huò yǒu yīn cǐ shēng yú tiān shàng, suī shēng tiān shàng, ér běn shàn gēn yì wèi qióng jìn, bù fù gèng shēng zhū yú è qù。tiān shàng shòu jìn, huán shēng rén jiān, huò wéi lún wáng, tǒng shè sì zhōu, wēi dé zì zài, ān lì wú liàng bǎi qiān yǒu qíng yú shí shàn dào;",
+                chinese: "或有因此生於天上,雖生天上,而本善根亦未窮盡,不復更生諸餘惡趣。天上壽盡,還生人間,或為輪王,統攝四洲,威德自在,安立無量百千有情於十善道;"
+            ),
+            Verse(
+                number: 4,
+                text: "Or, they may be born as a ksatriya, a brahmin, or a member of a prominent, prosperous family with numerous relatives and overflowing abundance of wealth and material possessions.",
+                pinyin: "huò shēng chà dì lì、pó luó mén、jū shì dà jiā, duō ráo cái bǎo, cāng kù yíng yì, xíng xiāng duān zhèng,",
+                chinese: "或生剎帝利、婆羅門、居士大家,多饒財寶,倉庫盈溢,形相端正,"
+            )
+        ]
+        for verse in mbChapter7.verses {
+            verse.chapter = mbChapter7
+        }
+        
+        let mbChapter8 = Chapter(number: 8, title: "Additional Benefits")
+        mbChapter8.text = medicineBuddhaSutra
+        mbChapter8.verses = [
+            Verse(
+                number: 1,
+                text: "They will have a pleasing appearance, and are astute, wise, courageous, and valiant, possessing physical health, strength, and energy. Or, if they were previously women, and were able to hear the name of the Medicine Buddha of Pure Crystal Radiance and wholeheartedly receive and uphold it, they will not again receive a woman's form.",
+                pinyin: "juàn shǔ jù zú, cōng míng zhì huì, yǒng jiàn wēi měng, rú dà lì shì。ruò shì nǚ rén, dé wén shì zūn yào shī liú lí guāng rú lái míng hào, zhì xīn shòu chí, yú hòu bù fù gèng shòu nǚ shēn。」",
+                chinese: "眷屬具足,聰明智慧,勇健威猛,如大力士。若是女人,得聞世尊藥師琉璃光如來名號,至心受持,於後不復更受女身。」"
+            ),
+            Verse(
+                number: 2,
+                text: "Manjusri, at the time of his enlightenment and due to the strength of his original vows, the Medicine Buddha of Pure Crystal Radiance was capable of seeing numerous sentient beings encountering various forms of illness, such as emaciation, yellow fever, and disorientation due to magical practices. He also observed them suffering due to premature demise, or an unexpected or violent death.",
+                pinyin: "「fù cì, màn shū shì lì! bǐ yào shī liú lí guāng rú lái dé pú tí shí, yóu běn yuàn lì, guān zhū yǒu qíng, yù zhòng bìng kǔ shòu luán、gān xiāo、huáng rè děng bìng; huò bèi yǎn měi、gǔ dú suǒ zhòng; huò fù duǎn mìng, huò shí héng sǐ;",
+                chinese: "「復次,曼殊室利!彼藥師琉璃光如來得菩提時,由本願力,觀諸有情,遇眾病苦瘦攣、乾消、黃熱等病;或被魘魅、蠱毒所中;或復短命,或時橫死;"
+            ),
+            Verse(
+                number: 3,
+                text: "Wanting to relieve these beings' suffering and illness, to fulfill all that they sought, he then, at that moment, entered into the samadhi called 'Eliminating the Suffering and Agitation of All Beings.' Upon entering meditative absorption, a great light emanated from the crown of the Buddha's head. Immersed in this light, the Buddha then recited a great dharani:",
+                pinyin: "yù lìng shì děng bìng kǔ xiāo chú suǒ qiú yuàn mǎn。」shí bǐ shì zūn rù sān mó dì, míng yuē chú miè yī qiè zhòng shēng kǔ nǎo; jì rù dìng yǐ, yú ròu jì zhōng, chū dà guāng míng, guāng zhōng yǎn shuō dà tuó luó ní yuē:",
+                chinese: "欲令是等病苦消除所求願滿。」時彼世尊入三摩地,名日除滅一切眾生苦惱;既入定已,於肉髻中,出大光明,光中演說大陀羅尼曰:"
+            ),
+            Verse(
+                number: 4,
+                text: "Namo Bhagavat Bhaisajyaguruvaiduryaprabharajaya tathagataya arhate samyaksambuddhaya tadyatha Om bhaisajye bhaisajye-bhaisajya samudgate svaha.",
+                pinyin: "「nán mó bó qié fá dì, pí shā shè jù lú, bì liú lí, bō là pó hē là shé yě, dá tā jiē duō yē, ā là hē dì, sān miǎo sān bó tuó yē。dá zhí tā ān! pí shā shì, pí shā shì, pí shā shè, sān mò jiē dì! suō hē! 」",
+                chinese: "「南謨薄伽伐帝,鞞殺社實嚕,薛琉璃,缽刺婆喝囉闍也,怛他揭多耶,阿囉喝帝,三藐三勃陀耶。怛姪他 唵!鞞殺逝,鞞殺逝,鞞殺社,三沒揭帝!莎訶! 」"
+            ),
+            Verse(
+                number: 5,
+                text: "After he uttered the dharani in the midst of such great light, the earth began trembling and sent forth a great radiance. All sentient beings' illnesses and suffering were healed, and they enjoyed total ease of body and mind.",
+                pinyin: "ěr shí, guāng zhōng shuō cǐ zhòu yǐ, dà dì zhèn dòng, fàng dà guāng míng, yī qiè zhòng shēng bìng kǔ jiē chú, shòu ān yǐn lè。「màn shū shì lì! ruò jiàn nán zǐ、nǚ rén, yǒu bìng kǔ zhě, yīng dāng yī xīn wéi",
+                chinese: "爾時,光中說此咒已,大地震動,放大光明,一切眾生病苦皆除,受安隱樂。「曼殊室利!若見男子、女人,有病苦者,應當一心為"
+            ),
+            Verse(
+                number: 6,
+                text: "Manjusri, if you see men and women who suffer from illness you should, with a devoted heart and mind, help bathe them, cleanse their mouths, and administer food, medicine, or water which has been purified through one hundred and eight recitations of the dharani. All their illness and suffering shall thereupon be extinguished.",
+                pinyin: "bǐ bìng rén, cháng qīng jìng zǎo shù, huò shí、huò yào、huò wú chóng shuǐ、zhòu yī bǎi bā biàn, yǔ bǐ fú shí, suǒ yǒu bìng kǔ xī jiē xiāo miè。",
+                chinese: "彼病人,常清淨澡漱,或食、或藥、或無蟲水、咒百八遍,與彼服食,所有病苦悉皆消滅。"
+            ),
+            Verse(
+                number: 7,
+                text: "If there is something they wish for, by reciting the dharani wholeheartedly, they shall obtain it. Thus, they shall enjoy long lives free from illness. After their lives have come to an end, they shall be reborn in the realm of the Medicine Buddha, where, without any regression, they advance to supreme enlightenment.",
+                pinyin: "ruò yǒu suǒ qiú, zhì xīn niàn sòng, jiē dé rú shì wú bìng yán nián; mìng zhōng zhī hòu, shēng bǐ shì jiè, dé bù tuì zhuǎn, nǎi zhì pú tí。",
+                chinese: "若有所求,志心念誦,皆得如是無病延年;命終之後,生彼世界,得不退轉,乃至菩提。"
+            ),
+            Verse(
+                number: 8,
+                text: "Manjusri, there are men and women who wholeheartedly, earnestly, and respectfully make offerings to the Medicine Buddha of Pure Crystal Radiance and who often uphold this dharani without neglect, never forgetting it.",
+                pinyin: "shì gù màn shū shì lì! ruò yǒu nán zǐ、nǚ rén, yú bǐ yào shī liú lí guāng rú lái, zhì xīn yīn zhòng gōng jìng gòng yǎng zhě, cháng chí cǐ zhòu, wù lìng fèi wàng。",
+                chinese: "是故曼殊室利!若有男子、女人,於彼藥師琉璃光如來,至心殷重恭敬供養者,常持此咒,勿令廢忘。"
+            ),
+            Verse(
+                number: 9,
+                text: "Also, Manjusri, there are men and women of pure faith who have the chance to hear and recite all the titles of the Medicine Buddha of Pure Crystal Radiance, who chew on the teeth-cleansing twig, rinse their mouths, and bathe their bodies before they offer fragrant flowers and incense and various kinds of devotional music to the image of the Medicine Buddha.",
+                pinyin: "「fù cì, màn shū shì lì! ruò yǒu jìng xìn nán zǐ、nǚ zǐ rén, dé wén yào shī liú lí guāng rú lái、yìng、zhèng děng jué suǒ yǒu míng hào wén yǐ sòng chí; chén jué chǐ mù, zǎo shù qīng jìng, yǐ zhū xiāng huā、shāo xiāng、tú xiāng、zuò zhòng jì yuè, gòng yǎng xíng xiàng。",
+                chinese: "「復次,曼殊室利!若有淨信男子、女子人,得聞藥師琉璃光如來、應、正等覺所有名號聞已誦持;晨嚼齒木,澡漱清淨,以諸香華、燒香、塗香、作眾伎樂,供養形像。"
+            ),
+            Verse(
+                number: 10,
+                text: "Then there are those who record or copy the sutra or teach others to transcribe it, and who listen to the sutra and understand its meaning, thereupon wholeheartedly upholding it. If there is a monastic who specializes in teaching the practice of the Medicine Buddha, one should offer all that is necessary for daily living, ensuring that the teacher lacks nothing.",
+                pinyin: "yú cǐ jīng diǎn, ruò zì shū, ruò jiào rén shū, xīn shòu chí, tīng wén qí yì。yú bǐ fǎ shī, yīng xiū gòng yǎng: yī qiè suǒ yǒu zī shēn zhī jù, xī jiē shī yǔ, wù lìng fá shǎo;",
+                chinese: "於此經典,若自書,若教人書,心受持,聽聞其義。於彼法師,應修供養:一切所有資身之具,悉皆施與,勿令乏少;"
+            ),
+            Verse(
+                number: 11,
+                text: "All of these mentioned will thereupon be protected and will be in the awareness of all Buddhas; that which they wish for will be fulfilled on their path to enlightenment.",
+                pinyin: "rú shì biàn méng zhū fó hù niàn, suǒ qiú yuàn mǎn, nǎi zhì pú tí。」",
+                chinese: "如是便蒙諸佛護念,所求願滿,乃至菩提。」"
+            )
+        ]
+        for verse in mbChapter8.verses {
+            verse.chapter = mbChapter8
+        }
+        
+        let mbChapter9 = Chapter(number: 9, title: "Manjusri's Vow")
+        mbChapter9.text = medicineBuddhaSutra
+        mbChapter9.verses = [
+            Verse(
+                number: 1,
+                text: "At that time, Manjusri spoke to the Buddha, \"World-Honored One, I will vow, at the time of the Period of Semblance Dharma, with various skillful means, to make it possible for all good men and women of pure faith to hear the titles of the World-Honored Medicine Buddha of Pure Crystal Radiance. Even while asleep they are able to awaken to truth upon hearing this sound in their ears.",
+                pinyin: "ěr shí, màn shū shì lì tóng zǐ bái fó yán: 「shì zūn! wǒ dāng shì yú xiàng fǎ zhuǎn shí, yǐ zhǒng zhǒng fāng biàn, lìng zhū jìng xìn shàn nán zǐ shàn nǚ rén děng, dé wén shì zūn yào shī liú lí guāng rú lái míng hào nǎi zhì shuì zhōng yì yǐ fó míng jué wù qí ěr。",
+                chinese: "爾時,曼殊室利童子白佛言:「世尊!我當誓於像法轉時,以種種方便,令諸淨信善男子、善女人等,得聞世尊藥師琉璃光如來名號乃至睡中亦以佛名覺悟其耳。"
+            ),
+            Verse(
+                number: 2,
+                text: "I will also make possible the upholding of this sutra through various skillful means such as recitation, explication of its profound meaning, self-practice through transcribing, or teaching others to transcribe it. Other means also include respectfully making offerings to the sutra itself by cleaning and purifying its environment and preparing an elevated place such as an altar upon which the sutra can be placed.",
+                pinyin: "shì zūn! ruò yú cǐ jīng shòu chí dú sòng, huò fù wèi tā yǎn shuō kāi shì; ruò zì shū; ruò jiào rén shū; gōng jìng zūn zhòng, yǐ zhǒng zhǒng huā xiāng、tú xiāng、mò xiāng、shāo xiāng、huā mán、yīng luò、fān gài、jì yuè, ér wéi gòng yǎng; yǐ wǔ sè cǎi, zuò náng chéng zhī; sǎo sǎ jìng chù, fū shè gāo zuò, ér yòng ān chù。",
+                chinese: "世尊!若於此經受持讀誦,或復為他演說開示;若自書;若教人書;恭敬尊重,以種種華香、塗香、末香、燒香、華鬘、瓔珞、幡蓋、伎樂,而為供養;以五色綵,作囊盛之;掃灑淨處,敷設高座,而用安處。"
+            ),
+            Verse(
+                number: 3,
+                text: "Upon the completion of these offerings, the Four Heavenly Kings and their retinue of hundreds of thousands of heavenly beings shall arrive at that place and offer their protection.",
+                pinyin: "ěr shí, sì dà tiān wáng yǔ qí juàn shǔ, jí yú wú liàng bǎi qiān tiān zhòng, jiē yì qí suǒ, gòng yǎng shǒu hù。",
+                chinese: "爾時,四大天王與其眷屬,及餘無量百千天眾,皆詣其所,供養守護。"
+            ),
+            Verse(
+                number: 4,
+                text: "World-Honored One, wherever this precious sutra is introduced and practiced, due to the virtue of the original vows of the Medicine Buddha of Pure Crystal Radiance, the hearing of his titles, and the upholding of this sutra, that place shall be free from the occurrence of any violent deaths. Those living in this area shall not be deprived of their vital energy. For those who have been deprived of their vital energy in this manner, they shall have it returned to them and enjoy peace of body and mind.",
+                pinyin: "「shì zūn! ruò cǐ jīng bǎo liú xíng zhī chù, yǒu néng shòu chí, yǐ bǐ shì zūn yào shī liú lí guāng rú lái běn yuàn gōng dé, jí wén míng hào, dāng zhī shì chù wú fù héng sǐ; yì fù bù wéi zhū è guǐ shén, duó qí jīng qì; shè yǐ duó zhě, huán dé rú gù, shēn xīn ān lè。」",
+                chinese: "「世尊!若此經寶流行之處,有能受持,以彼世尊藥師琉璃光如來本願功德,及聞名號,當知是處無復橫死;亦復不為諸惡鬼神,奪其精氣;設已奪者,還得如故,身心安樂。」"
+            ),
+            Verse(
+                number: 5,
+                text: "The Buddha then responded to Manjusri, \"Yes! Yes! It is as you have said, Manjusri. If there are men and women of pure practice who desire to make offerings to the World-Honored Medicine Buddha of Pure Crystal Radiance, they should first place an image of that Buddha in a clean, peaceful place and surround it with various flowers, fragrant burning incense, and colorful streamers and banners.",
+                pinyin: "fó gào màn shū shì lì: 「rú shì! rú shì! rú rǔ suǒ shuō。màn shū shì lì! ruò yǒu jìng xìn shàn nán zǐ shàn nǚ rén děng, yù gòng yǎng bǐ shì zūn yào shī liú lí guāng rú lái zhě, yīng xiān zào lì bǐ fó xíng xiàng, fū qīng jìng zuò ér ān chù zhī; sàn zhǒng zhǒng huā, shāo zhǒng zhǒng xiāng, yǐ zhǒng zhǒng chuáng",
+                chinese: "佛告曼殊室利:「如是!如是!如汝所說。曼殊室利!若有淨信善男子、善女人等,欲供養彼世尊藥師琉璃光如來者,應先造立彼佛形像,敷清淨座而安處之;散種種華,燒種種香,以種種幢"
+            ),
+            Verse(
+                number: 6,
+                text: "For seven days and nights, they should uphold the eight purification precepts, eat vegetarian meals, bathe their bodies to become clean and fragrant, and wear clean clothing. A mind free from turbidity, anger, and the desire to harm will give rise to a beneficial mind of peace, loving-kindness, compassion, joy, equanimity, and equality for all sentient beings.",
+                pinyin: "fān zhuāng yán qí chù qī rì qī yè, shòu bā fēn zhāi jiè, shí qīng jìng shí, zǎo yù xiāng jié, zhuó qīng jìng yī, yīng shēng wú gòu zhuó xīn, wú nù hài xīn, yú yī qiè yǒu qíng qǐ lì yì ān lè, cí、bēi、xǐ、shě, píng děng zhī xīn;",
+                chinese: "幡莊嚴其處七日七夜,受八分齋戒,食清淨食,澡浴香潔,著清淨衣,應生無垢濁心,無怒害心,於一切有情起利益安樂,慈、悲、喜、捨,平等之心;"
+            ),
+            Verse(
+                number: 7,
+                text: "They should circle the Buddha statue in a clockwise direction, drumming and singing songs of joyous praise. They should also contemplate the Buddha's vows of great virtue, study and recite this sutra, consider its meaning, and speak to reveal the profound teaching. If these pure practices are followed, all their wishes shall be granted: those who seek long life shall gain long life; those who seek abundant wealth shall gain abundant wealth; those who seek a government post shall receive such; and those who seek the birth of a male or female child shall be granted such.",
+                pinyin: "gǔ yuè gē zàn, yòu rào fó xiàng。fù yīng niàn bǐ rú lái běn yuàn gōng dé, dú sòng cǐ jīng, sī wéi qí yì, yǎn shuō kāi shì。suí suǒ lè qiú, yī qiè jiē suì; qiú cháng shòu dé cháng shòu, qiú fù ráo dé fù ráo, qiú guān wèi dé guān wèi, qiú nán nǚ dé nán nǚ。",
+                chinese: "鼓樂歌讚,右遶佛像。復應念彼如來本願功德,讀誦此經,思惟其義,演說開示。隨所樂求,一切皆遂;求長壽得長壽,求富饒得富饒,求官位得官位,求男女得男女。"
+            ),
+            Verse(
+                number: 8,
+                text: "If one unexpectedly experiences nightmares, apparitions, the ominous gathering of strange birds, or the arising of various strange phenomena around his or her residence, should he or she respectfully make offerings of numerous exquisite material objects, all these omens shall disappear without doing any harm.",
+                pinyin: "ruò fù yǒu rén, hū dé è mèng, jiàn zhū è xiàng; huò guài niǎo lái jí, huò yú zhù chù bǎi guài chū xiàn; cǐ rén ruò yǐ zhòng miào zī jù, gōng jìng gòng yǎng bǐ shì zūn yào shī liú lí guāng rú lái zhě, è mèng è xiàng zhū bù jí xiáng, jiē xī yǐn mò, bù néng wéi huàn。",
+                chinese: "若復有人,忽得惡夢,見諸惡相;或怪鳥來集,或於住處百怪出現;此人若以眾妙資具,恭敬供養彼世尊藥師琉璃光如來者,惡夢惡相諸不吉祥,皆悉隱沒,不能為患。"
+            ),
+            Verse(
+                number: 9,
+                text: "If there are those who encounter fears due to flood, fire, calamities of warfare, near-death experiences, or vicious wild creatures such as elephants, lions, tigers, wolves, brown bears, poisonous snakes, scorpions, centipedes, millipedes, mosquitoes, and biting flies, when they wholeheartedly contemplate the Buddha and respectfully make offerings to him, all their fears shall subside.",
+                pinyin: "huò yǒu shuǐ、huǒ、dāo、dú、xuán xiǎn、è xiàng、shī zǐ、hǔ、láng、xióng、pí、dú shé、è xiē、wú gōng、yóu yán、wén méng děng bù; ruò néng zhì xīn yì niàn bǐ fó, gōng jìng gòng yǎng, yī qiè bù wèi jiē dé jiě tuō。",
+                chinese: "或有水、火、刀、毒、懸險、惡象、師子、虎、狼、熊、羅、毒蛇、惡蠍、蜈蚣、蚰蜒、蚊蚊等怖;若能至心憶念彼佛,恭敬供養,一切怖畏皆得解脫。"
+            ),
+            Verse(
+                number: 10,
+                text: "If they have fears of being invaded by other countries, internal rebellions, or the activities of robbers and thieves, upon respectfully contemplating the Buddha, they shall find relief from these fears.",
+                pinyin: "ruò tā guó qīn rǎo, dào zéi fǎn luàn; yì niàn gōng jìng bǐ rú lái zhě, yì jiē jiě tuō。",
+                chinese: "若他國侵擾,盜賊反亂;憶念恭敬彼如來者,亦皆解脫。"
+            )
+        ]
+        for verse in mbChapter9.verses {
+            verse.chapter = mbChapter9
+        }
+        
+        let mbChapter10 = Chapter(number: 10, title: "Protection and Benefits")
+        mbChapter10.text = medicineBuddhaSutra
+        mbChapter10.verses = [
+            Verse(
+                number: 1,
+                text: "Again, Manjusri, let us suppose that good men and women of pure faith, who even unto death have not followed the path of any other faith, take refuge in the Buddha, the Dharma, and the Sangha and uphold the various sets of precepts, such as the five precepts, the ten precepts, the four hundred bodhisattva precepts, the two hundred and fifty bhiksu precepts, and the five hundred bhiksuni precepts.",
+                pinyin: "「fù cì, màn shū shì lì! ruò yǒu jìng xìn shàn nán zǐ shàn nǚ rén děng, nǎi zhì jìn xíng bù shì yú tiān, wéi dāng yī xīn, guī fó、fǎ、sēng, shòu chí jìn jiè, ruò wǔ jiè、shí jiè、pú sà sì bǎi jiè, bì chú èr bǎi wǔ shí jiè、bì chú ní wǔ bǎi jiè。",
+                chinese: "「復次,曼殊室利!若有淨信善男子、善女人等,乃至盡形不事餘天,唯當一心,歸佛、法、僧,受持禁戒,若五戒、十戒、菩薩四百戒,苾芻二百五十戒、苾芻尼五百戒。"
+            ),
+            Verse(
+                number: 2,
+                text: "If, in the midst of upholding these precepts, they violate any of them and thus become fearful of falling into the three lower realms upon rebirth, should they become absorbed in the contemplation of the Buddha's titles and respectfully make offerings, they can be certain of no further rebirth in these realms.",
+                pinyin: "yú suǒ shòu zhōng, huò yǒu huǐ fàn, bù duò qù, ruò néng zhuān niàn bǐ fó míng hào, gōng jìng gòng yǎng zhě, bì dìng bù shòu sān è qù shēng。",
+                chinese: "於所受中或有毀犯,怖墮趣,若能專念彼佛名號,恭敬供養者,必定不受三惡趣生。"
+            ),
+            Verse(
+                number: 3,
+                text: "When an expectant mother is experiencing the pains of labor, by chanting the Buddha's name as an offering, all of her fears and pain shall be removed. Due to the smooth delivery, the form and five faculties of the baby shall be perfectly complete. His or her countenance shall be very pleasant, such that people will be delighted when they see the baby. This child shall be inherently astute, enjoy a peaceful existence, and encounter little illness. No non-human being shall be capable of seizing that child's vital energy.",
+                pinyin: "huò yǒu nǚ rén, lín dāng chǎn shí, shòu yú jí kǔ; ruò néng zhì xīn chēng míng lǐ zàn, gōng jìng gòng yǎng bǐ rú lái zhě, zhòng kǔ jiē chú。suǒ shēng zhī zǐ, shēn fēn jù zú, xíng sè duān zhèng, jiàn zhě huān xǐ, lì gēn cōng míng, ān yǐn shǎo bìng, wú yǒu fēi rén duó qí jīng qì。」",
+                chinese: "或有女人,臨當產時,受於極苦;若能志心稱名禮讚,恭敬供養彼如來者,眾苦皆除。所生之子,身分具足,形色端正,見者歡喜,利根聰明,安隱少病,無有非人奪其精氣。」"
+            ),
+            Verse(
+                number: 4,
+                text: "At that time, the World-Honored One spoke to Ananda saying, \"Thus I praise all the virtues of the World-Honored Medicine Buddha of Pure Crystal Radiance. This virtuous state is shared by all Buddhas as a result of their deep and profound practice, but it is very difficult for ordinary people to understand. How about you, Ananda, do you trust this?\"",
+                pinyin: "ěr shí, shì zūn gào ā nán yán: 「rú wǒ chēng yáng bǐ shì zūn yào shī liú lí guāng rú lái suǒ yǒu gōng dé, cǐ shì zhū fó shèn shēn suǒ xíng chù, nán kě xìn jiě; rú jīn néng shòu, dāng zhī jiē shì rú lái wēi lì。",
+                chinese: "爾時,世尊告阿難言:「如我稱揚彼世尊藥師琉璃光如來所有功德,此是諸佛甚深所行處,難可信解;汝今能受,當知皆是如來威力。"
+            ),
+            Verse(
+                number: 5,
+                text: "Ananda replied, 'World-Honored One, with regard to the sutra spoken by the Buddha, I have absolutely no doubts concerning it. Why is that so? Because all the activities proceeding from the Buddha's body, speech, and mind are already completely pure. Even though the sun and moon may fall from the sky, even though the tallest mountain may collapse, the words of every Buddha are not subject to change.",
+                pinyin: "ā nán bái yán: 「dà dé shì zūn! wǒ yú rú lái suǒ shuō qì jīng bù shēng yí huò。suǒ yǐ zhě hé? yī qiè rú lái shēn yǔ yì yè, wú bù qīng jìng。shì zūn! rì yuè lún, kě lìng duò luò; miào gāo shān wáng, kě shǐ qīng dòng, zhū fó suǒ yán, wú yǒu yì yě。",
+                chinese: "阿難白言:「大德世尊!我於如來所說契經不生疑惑。所以者何?一切如來身語意業,無不清淨。世尊!日月輪,可令墮落;妙高山王,可使傾動,諸佛所言,無有異也。"
+            ),
+            Verse(
+                number: 6,
+                text: "World-Honored One, there are many beings who are not equipped with the roots of faith. Upon hearing the description of the profound state shared by all Buddhas, these beings question why such a multitude of remarkable benefits would accrue to one who simply contemplates and recites the titles of the Medicine Buddha of Pure Crystal Radiance. Due to this lack of trust, they even go so far as to engage in slander.",
+                pinyin: "shì zūn! yǒu zhū zhòng shēng, xìn gēn bù jù, wén shuō zhū fó shèn shēn suǒ xíng chù, zuò shì sī wéi; yún hé dàn niàn yào shī liú lí guāng rú lái yī fó míng hào, biàn huò ěr suǒ gōng dé shèng lì? yóu cǐ bù xìn, fǎn shēng fěi bàng;",
+                chinese: "世尊!有諸眾生,信根不具,聞說諸佛甚深所行處,作是思惟;云何但念藥師琉璃光如來一佛名號,便獲爾所功德勝利?由此不信,返生誹謗;"
+            ),
+            Verse(
+                number: 7,
+                text: "As a result, they remain in the endless darkness of ignorance, thus losing the opportunity for great benefit and happiness, and repeatedly fall into the various lower realms. The Buddha thus spoke to Ananda, \"For those particular sentient beings, if they hear the titles of the World-Honored Medicine Buddha of Pure Crystal Radiance and uphold them without doubt and bewilderment, there is no point in even being concerned about falling into lower realms of rebirth.",
+                pinyin: "bǐ yú cháng yè, shī dà lì lè, duò zhū è qù, liú zhuǎn wú qióng。」fó gào ā nán: 「shì zhū yǒu qíng, ruò wén shì zūn yào shī liú lí guāng rú lái míng hào, zhì xīn shòu chí, bù shēng yí huò, duò è qù zhě, wú yǒu shì chù。",
+                chinese: "彼於長夜,失大利樂,墮諸惡趣,流轉無窮。」佛告阿難:「是諸有情,若聞世尊藥師琉璃光如來名號,至心受持,不生疑惑,墮惡趣者,無有是處。"
+            ),
+            Verse(
+                number: 8,
+                text: "Ananda, this is the deep and profound practice of all Buddhas, found difficult to believe and understand by most. Your comprehension of this can be ascribed to the power of the Buddha's practices as well, Ananda. All sravakas, pratyeka-buddhas, and bodhisattvas who have not yet ascended the first of the ten stages of bodhisattva development are not yet able to understand and know the true nature of this practice.",
+                pinyin: "ā nán! cǐ shì zhū fó shèn shēn suǒ xíng, nán kě xìn jiě; rú jīn néng shòu, dāng zhī jiē shì rú lái wēi lì。ā nán! yī qiè shēng wén、dú jué、jí wèi dēng dì zhū pú sà děng, jiē xī bù néng rú shí xìn jiě;",
+                chinese: "阿難!此是諸佛甚深所行,難可信解;汝今能受,當知皆是如來威力。阿難!一切聲聞、獨覺、及未登地諸菩薩等,皆悉不能如實信解;"
+            ),
+            Verse(
+                number: 9,
+                text: "Only those bodhisattvas who will attain Buddhahood in their next lifetime are capable of true understanding. Ananda, it is difficult to be reborn in human form. Having faith and respect in the Triple Gem is also not easy. Most difficult to achieve, however, is the opportunity to hear the titles of the World-Honored Medicine Buddha of Pure Crystal Radiance.",
+                pinyin: "wéi chú shēng suǒ xì pú sà。ā nán! rén shēn nán dé; yú sān bǎo zhōng, xìn jìng zūn zhòng, yì nán kě dé; wén shì zūn yào shī liú lí guāng rú lái míng hào, fù nán yú shì。",
+                chinese: "唯除生所繫菩薩。阿難!人身難得;於三寶中,信敬尊重,亦難可得;聞世尊藥師琉璃光如來名號,復難於是。"
+            ),
+            Verse(
+                number: 10,
+                text: "Ananda, the Medicine Buddha of Pure Crystal Radiance has practiced endless bodhisattva spiritual disciplines, as well as developed innumerable wonderful skillful means and achieved numerous great vows. Were I to elaborate on this Buddha's disciplines, skillful means, and vows for one kalpa or more, I could not describe them completely for they are vast and limitless.",
+                pinyin: "ā nán! bǐ yào shī liú lí guāng rú lái; wú liàng pú sà xíng; wú liàng shàn qiǎo fāng biàn; wú liàng guǎng dà yuàn; wǒ ruò yī jié, ruò yī jié yú ér guǎng shuō zhě, jié kě sù jìn, bǐ fó xíng yuàn shàn qiǎo fāng biàn, wú yǒu jìn yě!」",
+                chinese: "阿難!彼藥師琉璃光如來;無量菩薩行;無量善巧方便;無量廣大願;我若一劫,若一劫餘而廣說者,劫可速盡,彼佛行願善巧方便,無有盡也!」"
+            )
+        ]
+        for verse in mbChapter10.verses {
+            verse.chapter = mbChapter10
+        }
+        
+        let mbChapter11 = Chapter(number: 11, title: "Rescuing Aid Bodhisattva")
+        mbChapter11.text = medicineBuddhaSutra
+        mbChapter11.verses = [
+            Verse(
+                number: 1,
+                text: "Subsequently, a great bodhisattva named Rescuing Aid Bodhisattva arose from the audience. With bared right shoulder and bowing upon his right knee with joined palms, he respectfully said to the Buddha, \"Great Virtuous World-Honored One, during the Period of Semblance Dharma, there will be many sentient beings who will be trapped by various kinds of suffering and adversity.",
+                pinyin: "ěr shí, zhòng zhōng yǒu yī pú sà mó hē sà, míng yuē jiù tuō, cóng zuò ér qǐ, piān tǎn yòu jiān, yòu xī guì dì, hé zhǎng gōng jìng, bái fó yán: 「dà dé shì zūn!",
+                chinese: "爾時,眾中有一菩薩摩訶薩,名曰救脫,從座而起,偏袒右肩,右膝跪地,合掌恭敬,白佛言:「大德世尊!"
+            ),
+            Verse(
+                number: 2,
+                text: "They will experience long periods of illness and grow weak and feeble. Unable to eat and drink, their lips and throats will become parched and dry. No matter where they look, they shall see only darkness and exhibit all the symptoms of approaching death. Their mothers, fathers, relatives, and friends will gather around them, weeping and wailing.",
+                pinyin: "xiàng fǎ zhuǎn shí, yǒu zhū zhòng shēng, wèi zhū bìng kǔ suǒ jí, cháng bìng yíng shòu, bù néng shí yǐn, chún kǒu gān zào, jiàn zhě chù mù, shēng sǐ zhī xiàng; fù mǔ、qīn shǔ、péng yǒu, zhī shí, wéi rào ér kū;",
+                chinese: "像法轉時,有諸眾生,為諸病苦所逼,長病羸瘦,不能飲食,唇口乾燥,見者觸目,生死之相;父母、親屬、朋友、知識,圍繞而哭;"
+            ),
+            Verse(
+                number: 3,
+                text: "However, unaware of all the concern that surrounds them, those on their deathbeds will be experiencing the arrival of the Judgment King of Hell's messenger, who escorts the consciousnesses of those who are dying into the presence of the King. Subsequently, these beings clearly recollect all their own deeds, both good and bad, record them and deliver their lists of deeds to the Judgment King of Hell.",
+                pinyin: "rán bǐ bìng rén, běn wù suǒ zhī, jiàn zhū è guǐ, shǐ zhě lái qū; qí shén shí, zhì yú yǎn mó fǎ wáng zhī qián; rán zhū yǒu qíng, yǒu jù shēng shén, suí qí suǒ zuò ruò zuì ruò fú, jiē jù shū zhī, jìn chí shòu yǔ yǎn mó fǎ wáng。",
+                chinese: "然彼病人,本無所知,見諸惡鬼,使者來取;其神識,至於琰魔法王之前;然諸有情,有俱生神,隨其所作若罪若福,皆具書之,盡持授與琰魔法王。"
+            ),
+            Verse(
+                number: 4,
+                text: "Thereafter, the King will interrogate them, and after considering the number of good and bad deeds, he will deliver an appropriate decision concerning their lives. If, at that time, the parents, relatives, and friends of those who are sick take refuge in the World-Honored Medicine Buddha of Pure Crystal Radiance, request many monastics to recite this sutra, light lamps, and make offerings, the consciousness of the sick person will be able to return.",
+                pinyin: "ěr shí, bǐ wáng tuī wèn qí rén, jì suàn suǒ zuò, suí qí zuì fú ér chù duàn zhī。shí bǐ bìng rén qīn shǔ、zhī shí, ruò néng wéi bǐ guī yī shì zūn yào shī liú lí guāng rú lái, qǐng zhū zhòng sēng, zhuǎn dú cǐ jīng, rán děng fàng guāng, xiū zhū gòng yǎng, bǐ bìng rén shén shí, hái dé sù huán。",
+                chinese: "爾時,彼王推問其人,計算所作,隨其罪福而處斷之。時彼病人親屬、知識,若能為彼歸依世尊藥師琉璃光如來,請諸眾僧,轉讀此經,然燈放光,修諸供養,彼病人神識,還得甦還。"
+            )
+        ]
+        for verse in mbChapter11.verses {
+            verse.chapter = mbChapter11
+        }
+        
+        let mbChapter12 = Chapter(number: 12, title: "Practices for the Sick")
+        mbChapter12.text = medicineBuddhaSutra
+        mbChapter12.verses = [
+            Verse(
+                number: 1,
+                text: "If, at that time, the parents, relatives, and friends of those who are sick take refuge in the World-Honored Medicine Buddha of Pure Crystal Radiance, request many monastics to recite this sutra, light seven layers of lamps, display the five-colored longevity banners, or undertake any similar practices on behalf of those who are sick, their consciousnesses could return after seven, twenty-one, thirty-five, or forty-nine days.",
+                pinyin: "qī céng zhī děng, xuán wǔ sè xù mìng shén fān, huò yǒu shì chù, bǐ shí dé huán。rú zài mèng zhōng, míng liǎo zì jiàn; huò jīng qī rì, huò èr shí yī rì, huò sān shí wǔ rì, huò sì shí jiǔ rì, bǐ shí huán shí, rú cóng mèng jué, jiē zì yì zhī shàn bù shàn yè, suǒ dé guǒ bào。",
+                chinese: "七層之燈,懸五色續命神旛,或有是處,彼識得還。如在夢中,明了自見;或經七日,或二十一日,或三十五日,或四十九日,彼識還時,如從夢覺,皆自憶知善不善業,所得果報。"
+            ),
+            Verse(
+                number: 2,
+                text: "When their consciousnesses return, it is like waking up from a dream. Through this experience, they remember all their good and bad deeds as well as the karmic retribution, thus proving to themselves the connection between cause and effect. Afterwards, they will no longer engage in activities that create bad karma. Therefore, all good men and women of pure faith should receive and uphold the titles of the Medicine Buddha of Pure Crystal Radiance according to their ability, and respectfully make offerings to him.",
+                pinyin: "yóu zì zhèng jiàn yè guǒ bào gù, nǎi zhì mìng nán, yì bù zào zuò zhū è zhī yè。shì gù jìng xìn shàn nán zǐ、shàn nǚ rén děng, jiē yīng shòu chí yào shī liú lí guāng rú lái míng hào, suí lì suǒ néng, gōng jìng gòng yǎng。」",
+                chinese: "由自證見業果報故,乃至命難,亦不造作諸惡之業。是故淨信善男子、善女人等,皆應受持藥師琉璃光如來名號,隨力所能,恭敬供養。」"
+            ),
+            Verse(
+                number: 3,
+                text: "Then, Ananda asked Rescuing Aid Bodhisattva, \"How should one make offerings to the Buddha? Furthermore, concerning the longevity banners and lamps, how should one engage in this type of activity?\"",
+                pinyin: "ěr shí, ā nán wèn jiù tuō pú sà yuē: 「shàn nán zǐ! yīng yún hé gōng jìng gòng yǎng bǐ shì zūn yào shī liú lí guāng rú lái? xù mìng fān děng fù yún hé zào?」",
+                chinese: "爾時,阿難問救脫菩薩曰:「善男子!應云何恭敬供養彼世尊藥師琉璃光如來?續命旛燈復云何造?」"
+            ),
+            Verse(
+                number: 4,
+                text: "Rescuing Aid Bodhisattva said, \"Great Virtuous One, if there are sick people who seek relief from their suffering, those who care about them can, on their behalf, uphold the eight purification precepts for seven days and nights. According to their means, they can make offerings of food, drink, and other material needs to monastics. Throughout the day, they can bow and make offerings before the World-Honored Medicine Buddha of Pure Crystal Radiance, recite this sutra forty-nine times, and light forty-nine lamps.",
+                pinyin: "jiù tuō pú sà yán: 「dà dé! ruò yǒu bìng rén, yù tuō bìng kǔ, dāng wéi qí rén qī rì qī yè, shòu chí bā fēn zhāi jiè。yīng yǐ yǐn shí jí yú zī jù, suí lì suǒ bàn, gòng yǎng bì chú sēng; zhòu yè liù shí, lǐ bài gòng yǎng bǐ shì zūn yào shī liú lí guāng rú lái; dú sòng cǐ jīng sì shí jiǔ biàn; rán sì shí jiǔ děng;",
+                chinese: "救脫菩薩言:「大德!若有病人,欲脫病苦,當為其人七日七夜,受持八分齋戒。應以飲食及餘資具,隨力所辦,供養苾芻僧;晝夜六時,禮拜供養彼世尊藥師琉璃光如來;讀誦此經四十九遍;然四十九燈;"
+            ),
+            Verse(
+                number: 5,
+                text: "They can create seven images of the Buddha and place seven lamps in front of each. The glow from each lamp should be as large as the circumference of the wheel of a cart, and the radiant brightness should never be extinguished during the forty-nine days. They can assemble the splendid five-colored longevity banners, each of which is composed of forty-nine three-finger-length sections. Also, they can set free forty-nine living beings of various kinds. Through these activities, sick individuals are supported in overcoming danger and distress, and are immune to being held hostage by any evil spirit.",
+                pinyin: "zào bǐ rú lái xíng xiàng qī qū, xiàng qián gè zhì qī děng, yī děng liàng dà rú chē lún, nǎi zhì sì shí jiǔ rì guāng míng bù jué, zào wǔ sè cǎi fān, cháng sì shí jiǔ tàn shǒu; yīng fàng zá lèi zhòng shēng zhì sì shí jiǔ; kě dé guò dù wēi è zhī nán, bù wéi zhū héng è guǐ suǒ chí。」",
+                chinese: "造彼如來形像七軀,像前各置七燈,一燈量大如車輪,乃至四十九日光明不絕,造五色綵旛,長四十九探手;應放雜類眾生至四十九;可得過度危厄之難,不為諸橫惡鬼所持。」"
+            )
+        ]
+        for verse in mbChapter12.verses {
+            verse.chapter = mbChapter12
+        }
+        
+        let mbChapter13 = Chapter(number: 13, title: "Protection for Countries")
+        mbChapter13.text = medicineBuddhaSutra
+        mbChapter13.verses = [
+            Verse(
+                number: 1,
+                text: "Again, Ananda, if calamities such as epidemics, invasions, internal rebellions, strange changes in constellations, solar and lunar eclipses, untimely wind and rain, or drought arise in a country, the ruler of that country should give rise to the heart and mind of compassion for all sentient beings and grant amnesty to all who are imprisoned.",
+                pinyin: "「fù cì, ā nán! ruò chà dì lì、guàn dǐng wáng děng, zāi nàn qǐ shí, suǒ wèi rén zhòng jí yì nán、tā guó qīn bī nán, zì jiè pàn nì nán, xīng xiù biàn guài nán, rì yuè bó shí nán, fēi shí fēng yǔ nán, guò shí bù yǔ nán。",
+                chinese: "「復次,阿難!若剎帝利、灌頂王等,災難起時,所謂人眾疾疫難、他國侵逼難,自界叛逆難,星宿變怪難,日月薄蝕難,非時風雨難,過時不雨難。"
+            ),
+            Verse(
+                number: 2,
+                text: "In reference to what I have previously suggested concerning offerings, they also can make offerings to the World-Honored Medicine Buddha of Pure Crystal Radiance on behalf of all sentient beings. Because of these good roots and the strength of the Buddha's original vows, that country will be able to quickly attain peace and stability. The wind and rain will arrive according to season and the harvest will be bountiful.",
+                pinyin: "bǐ chà dì lì、guàn dǐng wáng děng, ěr shí yīng yú yī qiè yǒu qíng, qǐ cí bēi xīn shè zhū xì bì; yī qián suǒ shuō gòng yǎng zhī fǎ, gòng yǎng bǐ shì zūn yào shī liú lí guāng rú lái。yóu cǐ shàn gēn, jí bǐ rú lái běn yuàn lì gù, lìng qí guó jiè jí dé ān yǐn, fēng yǔ shùn shí, gǔ jià chéng shú;",
+                chinese: "彼剎帝利、灌頂王等,爾時應於一切有情,起慈悲心赦諸繫閉;依前所說供養之法,供養彼世尊藥師琉璃光如來。由此善根,及彼如來本願力故,令其國界即得安隱,風雨順時,穀稼成熟;"
+            ),
+            Verse(
+                number: 3,
+                text: "All sentient beings will be free from illness and experience happiness. In the midst of this country there will be no yaksas, demons, and other spirits that harass sentient beings, and all evil phenomena will instantly disappear. Because the ruler engages in these activities on behalf of the populace, he shall remain energetic and enjoy a long life free from illness, in perfect ease.",
+                pinyin: "yī qiè yǒu qíng, wú bìng huān lè; yú qí guó zhōng, wú yǒu bào è yào chā děng shén, nǎo yǒu qíng zhě; yī qiè è xiàng, jiē jí yǐn mò; ér chà dì lì、guàn dǐng wáng děng shòu mìng sè lì, wú bìng zì zài, jiē dé zēng yì。",
+                chinese: "一切有情,無病歡樂;於其國中,無有暴惡藥叉等神,惱有情者;一切惡相,皆即隱沒;而剎帝利、灌頂王等壽命色力,無病自在,皆得增益。"
+            ),
+            Verse(
+                number: 4,
+                text: "Ananda, if the king, queen, the king's consorts, the prince, high-ranking officials, prime ministers, palace servants, officials, and the general public become troubled by illness or other difficulties, these people should assemble the five-colored longevity banners and light the lamps of continuous illumination. They also should set free a multitude of sentient beings, scatter multicolored flowers, and light numerous types of incense. Thereafter, they shall recover from the illness they have suffered and be released from their many difficulties.",
+                pinyin: "ā nán! ruò dì hòu、fēi zhǔ、chǔ jūn、wáng zǐ、dà chén、fǔ xiàng、zhōng gōng、cǎi nǚ、bǎi guān、lí shù, wèi bìng suǒ kǔ, jí yú è nán; yì yīng zào lì wǔ sè shén fān, rán děng xù míng, fàng zhū shēng mìng, sàn zá sè xiāng; bìng dé chú tuō。」",
+                chinese: "阿難!若帝后、妃主、儲君、王子、大臣、輔相、中宮、綵女、百官、黎庶,為病所苦,及餘厄難;亦應造立五色神旛,然燈續明,放諸生命,散雜色香;病得除脫。」"
+            )
+        ]
+        for verse in mbChapter13.verses {
+            verse.chapter = mbChapter13
+        }
+        
+        let mbChapter14 = Chapter(number: 14, title: "The Nine Unfortunate Deaths")
+        mbChapter14.text = medicineBuddhaSutra
+        mbChapter14.verses = [
+            Verse(
+                number: 1,
+                text: "Ananda asked Rescuing Aid Bodhisattva, \"Good man, how is it that a life at its end can still be lengthened and benefited by these practices?\"",
+                pinyin: "ěr shí, ā nán wèn jiù tuō pú sà yán: 「shàn nán zǐ! yún hé yǐ jìn zhī mìng ér kě zēng yì?」",
+                chinese: "爾時,阿難問救脫菩薩言:「善男子!云何已盡之命而可增益?」"
+            ),
+            Verse(
+                number: 2,
+                text: "Rescuing Aid Bodhisattva replied, \"Great Virtuous One, haven't you ever heard about the nine kinds of unfortunate death that the Buddha has spoken about? It is because of this that I encourage the assembling of longevity banners, lighting of lamps, and the cultivation of various blessings and virtues so that one does not have to experience suffering throughout one's life.\"",
+                pinyin: "jiù tuō pú sà yán: 「dà dé! rǔ qǐ bù wén rú lái shuō yǒu jiǔ héng sǐ yē? shì gù quàn zào xù mìng fān děng, xiū zhū fú dé; yǐ xiū fú gù, jìn qí shòu mìng, bù jīng kǔ huàn。」",
+                chinese: "救脫菩薩言:「大德!汝豈不聞如來說有九橫死耶?是故勸造續命旛燈,修諸福德;以修福故,盡其壽命,不經苦患。」"
+            ),
+            Verse(
+                number: 3,
+                text: "Ananda then asked, \"What are the nine kinds of unfortunate death?\"",
+                pinyin: "ā nán wèn yán: 「jiǔ héng yún hé?」",
+                chinese: "阿難問言:「九橫云何?」"
+            ),
+            Verse(
+                number: 4,
+                text: "Rescuing Aid Bodhisattva responded, \"For example, there are sentient beings who are suffering minor illnesses and find themselves without a doctor, medicine, or caregiver. Even though they might eventually find a doctor, they are administered the wrong medicine. Because it is a minor illness, they are not expected to die, but unfortunately they do. This is what is referred to as the first unfortunate death.",
+                pinyin: "jiù tuō pú sà yán: 「ruò zhū yǒu qíng, dé bìng suī qīng, rán wú yī yào jí kàn bìng zhě, shè fù yù yī, shòu yǐ fēi yào, shí bù yīng sǐ ér biàn héng sǐ。",
+                chinese: "救脫菩薩言:「若諸有情,得病雖輕,然無醫藥及看病者,設復遇醫,授以非藥,實不應死而便橫死。"
+            ),
+            Verse(
+                number: 5,
+                text: "Some of these beings believe in harmful heterodox and magical practices, seeking evil teachers who presumptuously predict disaster or good fortune. Thereupon, their lives become unstable and fearful, and their hearts and minds are turned in the wrong direction. Unsure of themselves, they seek methods of divination to predict disasters, and they kill various sentient beings as sacrifices in order to ask for blessings and protection from the deities and spirits of mountains and rivers. Although they hope to extend the duration of their lives, eventually it is clear they cannot do so. Due to their foolishness and confusion, they believe in inverted evil points of view and subsequently suffer an unfortunate death. They are then reborn in hell without hope for release. This is what is referred to as the first unfortunate death.",
+                pinyin: "yòu xìn shì jiān xié mó、wài dào、yāo niè zhī shī, wàng shuō huò fú, biàn shēng hòng dòng, xīn bù zì zhèng, bù wén mì huò, shā zhǒng zhǒng zhòng shēng, jiě zòu shén míng, hū zhū wǎng liǎng, qǐng qǐ fú yòu, yù jì yán mìng, zhōng bù néng dé; yú chī mí huò, xìn xié dào jiàn, suì lìng héng sǐ rù yú dì yù, wú yǒu chū qī, shì míng chū héng。",
+                chinese: "又信世間邪魔、外道、妖孽之師,妄說禍福,便生恐動,心不自正,卜問覓禍,殺種種眾生,解奏神明,呼諸魍魎,請乞福祐,欲冀延命,終不能得;愚癡迷惑,信邪倒見,遂令橫死入於地獄,無有出期,是名初橫。"
+            ),
+            Verse(
+                number: 6,
+                text: "The second kind of unfortunate death is execution due to the laws of a particular country.",
+                pinyin: "èr zhě、héng bèi wáng fǎ zhī suǒ zhū lù。",
+                chinese: "二者、橫被王法之所誅戮。"
+            ),
+            Verse(
+                number: 7,
+                text: "The third kind of unfortunate death comes about because of an indulgent lifestyle, which consists of hunting for pleasure, carousing, drinking, and engaging in lewd and licentious behavior. As a result of their idle ways, death occurs when non-human beings snatch their vital energy from them.",
+                pinyin: "sān zhě、tián liè xī xì, dān yín shì jiǔ, fàng yì wú dù, héng wéi fēi rén duó qí jīng qì。",
+                chinese: "三者、畋獵嬉戲,耽淫嗜酒,放逸無度,橫為非人奪其精氣。"
+            ),
+            Verse(
+                number: 8,
+                text: "The fourth kind of unfortunate death is by burning.",
+                pinyin: "sì zhě、héng wéi huǒ fén。",
+                chinese: "四者、橫為火焚。"
+            ),
+            Verse(
+                number: 9,
+                text: "The fifth kind of unfortunate death is drowning.",
+                pinyin: "wǔ zhě、héng wéi shuǐ nì。",
+                chinese: "五者、橫為水溺。"
+            ),
+            Verse(
+                number: 10,
+                text: "The sixth kind of unfortunate death is being devoured by vicious beasts.",
+                pinyin: "liù zhě、héng wéi zhǒng zhǒng è shòu suǒ dàn。",
+                chinese: "六者、橫為種種惡獸所啖。"
+            ),
+            Verse(
+                number: 11,
+                text: "The seventh kind of unfortunate death is plummeting off a mountain cliff.",
+                pinyin: "qī zhě、héng duò shān yá。",
+                chinese: "七者、橫墮山崖。"
+            ),
+            Verse(
+                number: 12,
+                text: "The eighth kind of unfortunate death is caused by poison, a curse, or a zombie.",
+                pinyin: "bā zhě、héng wéi dú yào、yǎn dǎo、zhòu zǔ、qǐ shī guǐ。",
+                chinese: "八者、橫為毒藥、厭禱、咒詛、起屍鬼。"
+            ),
+            Verse(
+                number: 13,
+                text: "The ninth kind of unfortunate death is caused by severe hunger without relief. These are the unfortunate deaths that the Buddha briefly spoke about. Here we have mentioned nine kinds, but there are numerous other kinds as well. It would be difficult for me to mention them all.",
+                pinyin: "jiǔ zhě、héng wéi jī kě suǒ kùn, bù dé yǐn shí ér biàn mìng zhōng。",
+                chinese: "九者、橫為饑渴所困,不得飲食而便命終。"
+            ),
+            Verse(
+                number: 14,
+                text: "Again, Ananda, the Judgment King of Hell is primarily in charge of the record book of both good and evil deeds. If there are sentient beings who do not respect their parents, commit one of the five violations, damage or slander the Triple Gem, break the laws of their country, or violate the five precepts, the Judgment King of Hell will weigh and evaluate their deeds and punish them accordingly.",
+                pinyin: "「fù cì, ā nán! yǎn mó wáng zhǔ sī míng shì jiān, bù xiào fù mǔ, wǔ nì, pò rǔ sān bǎo, huài jūn chén fǎ, huǐ yú xìng jiè, yǎn mó fǎ wáng, suí zuì qīng zhòng, kǎo ér fá zhī。",
+                chinese: "「復次,阿難!琰魔王主司命世間,不孝父母,五逆,破辱三寶,壞君臣法,毀於性戒,琰魔法王,隨罪輕重,考而罰之。"
+            )
+        ]
+        for verse in mbChapter14.verses {
+            verse.chapter = mbChapter14
+        }
+        
+        let mbChapter15 = Chapter(number: 15, title: "The Twelve Yaksa Generals")
+        mbChapter15.text = medicineBuddhaSutra
+        mbChapter15.verses = [
+            Verse(
+                number: 1,
+                text: "This is the reason I now encourage all sentient beings to light lamps and make longevity banners, and cultivate merit by the practice of releasing captive beings so that they might pass through suffering and stress without difficulties.",
+                pinyin: "shì gù wǒ jīn quàn zhū yǒu qíng, rán děng fàng shēng, xiū zhū fú dé, yǐ xiū fú gù, dé qí shòu mìng, bù jīng kǔ huàn。",
+                chinese: "是故我今勸諸有情,然燈放生,修諸福德,以修福故,得其壽命,不經苦患。"
+            ),
+            Verse(
+                number: 2,
+                text: "In the midst of this gathering, there were Twelve Yaksa Generals who had been in attendance during the entire assembly. Their names were: General Kumbhira, General Vajra, General Mihira, General Andira, General Majira, General Shandira, General Indra, General Pajra, General Makura, General Sindura, General Catura, and General Vikarala.",
+                pinyin: "cǐ shí èr yào chā dà jiàng, yī gè yǒu qí qiān yào chā, yǐ wéi juàn shǔ, tóng shí jǔ shēng bái fó yán: 「shì zūn! wǒ děng jīn zhě méng fó wēi lì, dé wén shì zūn yào shī liú lí guāng rú lái míng hào, bù fù gèng yǒu è qù zhī bù。",
+                chinese: "此十二藥叉大將,一各有七千藥叉,以為眷屬,同時舉聲白佛言:「世尊!我等今者蒙佛威力,得聞世尊藥師琉璃光如來名號,不復更有惡趣之怖。"
+            ),
+            Verse(
+                number: 3,
+                text: "These Twelve Yaksa Generals, each with his own seven-thousand-member retinue, raised their voices in praise to the Buddha, saying, \"World-Honored One! Due to the blessings of the Buddha's omniscient power, we now can hear the titles of the World-Honored Medicine Buddha of Pure Crystal Radiance. We no longer need to experience the fears of the three lower realms. With one accord, we wholeheartedly take refuge in the Buddha, the Dharma, and the Sangha for the duration of our lives in this form.",
+                pinyin: "wǒ děng xiāng shuài, jiē tóng yī xīn, nǎi zhì jìn xíng guī fó fǎ sēng, shì dāng hé fù yī qiè yǒu qíng, wéi zuò yì lì, ráo yì ān lè。",
+                chinese: "我等相率,皆同一心,乃至盡形歸佛法僧,誓當荷負一切有情,為作義利,饒益安樂。"
+            ),
+            Verse(
+                number: 4,
+                text: "We vow to bear responsibility for all sentient beings and to work toward their benefit. Because of this, there will be abundant peace and joy. We shall become the protectors of any village, town, city, country, or forest, that has been introduced to this sutra as well as its inhabitants who uphold the title of the Medicine Buddha of Pure Crystal Radiance and make respectful offerings thereto.",
+                pinyin: "suí yú hé děng cūn chéng guó yì, kōng xián lín zhōng, ruò yǒu liú bù cǐ jīng, huò fù shòu chí yào shī liú lí guāng rú lái míng hào, gōng jìng gòng yǎng zhě, wǒ děng juàn shǔ wèi hù shì rén, jiē shǐ jiě tuō yī qiè kǔ nán;",
+                chinese: "隨於何等村城國邑,空閑林中,若有流布此經,或復受持藥師琉璃光如來名號,恭敬供養者,我等眷屬衛護是人,皆使解脫一切苦難;"
+            ),
+            Verse(
+                number: 5,
+                text: "All shall find relief from their suffering and woes, and all existing wishes shall be fulfilled. If there are those who seek relief from an illness or a particular stressful situation, they should just recite this sutra. Using the five-colored ribbon streamers, they should tie a knot for each of our names. After their wishes are fulfilled, they can untie the knots.",
+                pinyin: "zhū yǒu yuàn qiú, xī lìng mǎn zú。huò yǒu jí è qiú dù tuō zhě, yì yīng dú sòng cǐ jīng, yǐ wǔ sè lǚ, jié wǒ míng zì, dé rú yuàn yǐ, rán hòu jiě jié。」",
+                chinese: "諸有願求,悉令滿足。或有疾厄求度脫者,亦應讀誦此經,以五色縷,結我名字,得如願已,然後解結。」"
+            ),
+            Verse(
+                number: 6,
+                text: "At that time, the World-Honored One praised the Yaksa Generals, saying, \"Excellent! Well done! Your wish to protect and bring happiness and peace to all sentient beings is an appropriate way to express your gratitude to the Medicine Buddha of Pure Crystal Radiance.\"",
+                pinyin: "ěr shí, shì zūn zàn zhū yào chā dà jiàng yán: 「shàn zāi! shàn zāi! dà yào chā jiàng! rǔ děng niàn bào shì zūn yào shī liú lí guāng rú lái ēn dé zhě, cháng yīng rú shì lì yì ān lè yī qiè yǒu qíng。」",
+                chinese: "爾時,世尊讚諸藥叉大將言:「善哉!善哉!大藥叉將!汝等念報世尊藥師琉璃光如來恩德者,常應如是利益安樂一切有情。」"
+            )
+        ]
+        for verse in mbChapter15.verses {
+            verse.chapter = mbChapter15
+        }
+        
+        let mbChapter16 = Chapter(number: 16, title: "Conclusion")
+        mbChapter16.text = medicineBuddhaSutra
+        mbChapter16.verses = [
+            Verse(
+                number: 1,
+                text: "Then, Ananda addressed the Buddha, \"World-Honored One, from now on, how should we refer to this Dharma practice and how should we respectfully uphold it?\"",
+                pinyin: "ěr shí, ā nán bái fó yán: 「shì zūn! dāng hé míng cǐ fǎ mén? wǒ děng yún hé fèng chí?」",
+                chinese: "爾時,阿難白佛言:「世尊!當何名此法門?我等云何奉持?」"
+            ),
+            Verse(
+                number: 2,
+                text: "The Buddha responded, \"This Dharma practice is called the 'Meritorious Virtuous and Original Vows of Medicine Buddha of Pure Crystal Radiance,' or it can be also referred to as the 'Powerful Mantra and Wish-Weaving Twelve Yaksa Generals Benefiting Sentient Beings.' This also may be referred to as 'The Practice of Removing All Karmic Obstructions.' This is how it can be named and upheld.\"",
+                pinyin: "fó gào ā nán: 「cǐ fǎ mén míng shuō yào shī liú lí guāng rú lái běn yuàn gōng dé; yì míng shuō shí èr shén jiàng ráo yì yǒu qíng jié yuàn shén zhòu; yì míng bá chú yī qiè yè zhàng; yīng rú shì chí。」",
+                chinese: "佛告阿難:「此法門名說藥師琉璃光如來本願功德;亦名說十二神將饒益有情結願神咒;亦名拔除一切業障;應如是持。」"
+            ),
+            Verse(
+                number: 3,
+                text: "After the Bhagavat had said these words, the entire assembly of all the bodhisattvas, great bodhisattvas, sravakas, kings and their subjects, brahmins, laypeople, nagas, yaksas, gandharas, asuras, garudas, kinnaras, mahoragas, human and non-human beings, and so forth, was delighted to hear the words of the Buddha and faithfully received this teaching and practice.",
+                pinyin: "shí bó qié fàn, shuō shì yǔ yǐ, zhū pú sà mó hē sà, jí dà shēng wén, guó wáng、dà chén、pó luó mén、jū shì、tiān、lóng、yào chā、jiàn dá fù、ā sù luó、jiē lù chá、jǐn nà luó、mò hū luó qié, rén fēi rén děng, yī qiè dà zhòng, wén fó suǒ shuō, jiē dà huān xǐ; xìn shòu fèng xíng。",
+                chinese: "時薄伽梵,說是語已,諸菩薩摩訶薩,及大聲聞,國王、大臣、婆羅門、居士、天、龍、藥叉、健達縛、阿素洛、揭路茶、緊那洛、莫呼洛伽,人非人等,一切大眾,聞佛所說,皆大歡喜;信受奉行。"
+            )
+        ]
+        for verse in mbChapter16.verses {
+            verse.chapter = mbChapter16
+        }
+        
+        let mbChapter17 = Chapter(number: 17, title: "Triple Refuge")
+        mbChapter17.text = medicineBuddhaSutra
+        mbChapter17.verses = [
+            Verse(
+                number: 1,
+                text: "I take refuge in the Buddha, wishing that all sentient beings understand the Dharma and make the supreme vow.",
+                pinyin: "zì guī yī fó, dāng yuàn zhòng shēng, tǐ jiě dà dào, fā wú shàng xīn。",
+                chinese: "自皈依佛,當願眾生,體解大道,發無上心。"
+            ),
+            Verse(
+                number: 2,
+                text: "I take refuge in the Dharma, wishing that all sentient beings study the sutras diligently and obtain prajna-wisdom.",
+                pinyin: "zì guī yī fǎ, dāng yuàn zhòng shēng, shēn rù jīng zàng, zhì huì rú hǎi。",
+                chinese: "自皈依法,當願眾生,深入經藏,智慧如海。"
+            ),
+            Verse(
+                number: 3,
+                text: "I take refuge in the Sangha, wishing that all sentient beings lead the masses in harmony without obstruction.",
+                pinyin: "zì guī yī sēng, dāng yuàn zhòng shēng, tǒng lǐ dà zhòng, yī qiè wú ài。",
+                chinese: "自皈依僧,當願眾生,統理大眾,一切無礙。"
+            )
+        ]
+        for verse in mbChapter17.verses {
+            verse.chapter = mbChapter17
+        }
+        
+        let mbChapter18 = Chapter(number: 18, title: "Dedication of Merit")
+        mbChapter18.text = medicineBuddhaSutra
+        mbChapter18.verses = [
+            Verse(
+                number: 1,
+                text: "May kindness, compassion, joy, and equanimity pervade the Dharma realms;",
+                pinyin: "cí bēi xǐ shě biàn fǎ jiè,",
+                chinese: "慈悲喜捨遍法界,"
+            ),
+            Verse(
+                number: 2,
+                text: "May all people and heavenly beings benefit from our blessings and friendship;",
+                pinyin: "xī fú jié yuán lì rén tiān,",
+                chinese: "惜福結緣利人天,"
+            ),
+            Verse(
+                number: 3,
+                text: "May our ethical practice of Chan, Pure Land, and Precepts help us to realize equality and patience;",
+                pinyin: "chán jìng jiè xíng píng děng rěn,",
+                chinese: "禪淨戒行平等忍,"
+            ),
+            Verse(
+                number: 4,
+                text: "May we undertake the Great Vows with humility and gratitude.",
+                pinyin: "cán kuì gǎn ēn dà yuàn xīn。",
+                chinese: "慚愧感恩大願心。"
+            )
+        ]
+        for verse in mbChapter18.verses {
+            verse.chapter = mbChapter18
+        }
+        
+        let mbChapter19 = Chapter(number: 19, title: "A Prayer to Medicine Buddha")
+        mbChapter19.text = medicineBuddhaSutra
+        mbChapter19.verses = [
+            Verse(
+                number: 1,
+                text: "Oh great, compassionate Medicine Buddha! Please listen to my report: There is truly too much suffering in the world these days: The crimes of arson, murder, and theft; The cruel oppression of corrupt officials; The turbulence of politics and the economy; And natural disasters of earth, water, fire, and wind;",
+                pinyin: "cí bēi wěi dà de yào shī rú lái! qǐng nín chuí tīng wǒ de bào gào, jīn tiān shì jiè shàng de kǔ nàn shí zài shì tài duō le! shāo shā lǔ lüè de qīn fàn, tān guān wū lì de pò hài, zhèng zhì jīng jì de dòng dàng, dì shuǐ huǒ fēng de zāi biàn;",
+                chinese: "慈悲偉大的藥師如來!請您垂聽我的報告,今天世界上的苦難實在是太多了!燒殺擄掠的侵犯,貪官污吏的迫害,政治經濟的動盪,地水火風的災變;"
+            ),
+            Verse(
+                number: 2,
+                text: "These things often cause people to lose everything they own in the blink of an eye. The suffering of being bedridden with a lingering illness Resulting from an imbalance of the four great elements; Even heroes moan in pain and have difficulty being at ease; The sea of karma that is full of passions and delusions, Resulting from greed, anger, and ignorance, Rolls unceasingly like roaring waves and billows.",
+                pinyin: "wǎng wǎng shǐ rén men zài shùn xī zhī jiān, shī qù le suǒ yǒu de yī qiè。nà sì dà bù tiáo, chán mián bìng tà de tòng kǔ, jí shǐ yīng xióng hǎo hàn yě shēn yín nán ān; nà tān chēn yú chī, fán nǎo cóng shēng de yè hǎi, yǒu rú bō tāo xiōng yǒng dì fān gǔn bù tíng。",
+                chinese: "往往促使人們在瞬息之間,失去了所有的一切。那四大不調,纏綿病榻的痛苦,即使英雄好漢也呻吟難安;那貪瞋愚癡,煩惱叢生的業海,有如波濤洶湧地翻滾不停。"
+            ),
+            Verse(
+                number: 3,
+                text: "Oh great, compassionate Medicine Buddha! If we do not depend on you now, How can we escape the sea of suffering? If we do not rely on you now, How can we subdue our defilements and resentments?",
+                pinyin: "cí bēi wěi dà de yào shī rú lái! wǒ men zài bù yǐ kào nín, rú hé chū lí kǔ hǎi? wǒ men zài bù yǎng zhàng nín, rú hé jiàng fú yuàn mó?",
+                chinese: "慈悲偉大的藥師如來!我們再不倚靠您,如何出離苦海?我們再不仰仗您,如何降伏怨魔?"
+            ),
+            Verse(
+                number: 4,
+                text: "Today, I sincerely chant your name, and Pay respect to your image, Not only to ask you to bless me, But in the hope that all beings will obtain your great protection To live and work in peace and contentment, And in happiness and harmony.",
+                pinyin: "wǒ jīn tiān qián chéng dì chēng niàn nín de míng hào, lǐ jìng nín de shèng róng, bù zhǐ shì qí qiú nín néng jiā bèi wǒ gè rén, gèng xī wàng zhòng shēng dōu dé dào nín de bì hù, ān jū lè yè, huān xǐ róng hé。",
+                chinese: "我今天虔誠地稱念您的名號,禮敬您的聖容,不只是祈求您能加被我個人,更希望眾生都得到您的庇護,安居樂業,歡喜融和。"
+            ),
+            Verse(
+                number: 5,
+                text: "Oh great, compassionate Medicine Buddha! We understand completely: That, in this world of impurity, All natural disasters and man-made calamities Are caused by collective karma; That, on this impure, mundane earth, Physical and mental suffering Is caused by the passions and delusions of life.",
+                pinyin: "cí bēi wěi dà de yào shī rú lái! wǒ men shēn zhī zài zhè ge wǔ zhuó è shì lǐ, tiān zāi rén huò shì gòng yè suǒ gǎn zhào; zài zhè ge suō pó huì tǔ zhōng, shēn xīn jí kǔ shì fán nǎo suǒ zào chéng。",
+                chinese: "慈悲偉大的藥師如來!我們深知在這個五濁惡世裡,天災人禍是共業所感召;在這個娑婆穢土中,身心疾苦是煩惱所造成。"
+            ),
+            Verse(
+                number: 6,
+                text: "If we want to thoroughly eliminate calamities and disasters, We must first eliminate the karma of our own wrongdoings; If we want to establish the Pure Land of the East, We must first purify our bodies and minds.",
+                pinyin: "rú guǒ yào chè dǐ xiāo chú zāi nàn, xiān dé xiāo chú zì jǐ de zuì yè; rú guǒ yào jiàn lì liú lí jìng tǔ, xiān dé jìng huà zì jǐ de shēn xīn。",
+                chinese: "如果要徹底消除災難,先得消除自己的罪業;如果要建立琉璃淨土,先得淨化自己的身心。"
+            ),
+            Verse(
+                number: 7,
+                text: "Therefore, I would like to pray to you, Medicine Buddha, To eliminate our greed and anger, To eliminate our ignorance and struggles. We willingly transfer all our good-rooted merits To all beings in the Dharma realms.",
+                pinyin: "suǒ yǐ wǒ yào qí qiú yào shī rú lái nín, xiāo chú wǒ men de tān lán chēn huì, xiāo chú wǒ men de wú míng dòu zhēng。wǒ men yuàn jiāng suǒ yǒu shàn gēn gōng dé, huí xiàng fǎ jiè yī qiè zhòng shēng。",
+                chinese: "所以我要祈求藥師如來您,消除我們的貪婪瞋恚,消除我們的無明鬥爭。我們願將所有善根功德,回向法界一切眾生。"
+            ),
+            Verse(
+                number: 8,
+                text: "May everyone live freely And may everything turn out as he or she wishes. Furthermore, great, compassionate Medicine Buddha! I pray to you to bestow your great power upon us for protection; I will undertake the following, pure, original vows:",
+                pinyin: "ràng dà jiā dōu néng shēng huó zì zài, shì shì rú yì。cí bēi wěi dà de yào shī rú lái! gèng qí qiú nín yǐ shén lì jiā bèi wǒ men, wǒ zài nín de miàn qián yě fā rú shì qīng jìng běn yuàn:",
+                chinese: "讓大家都能生活自在,事事如意。慈悲偉大的藥師如來!更祈求您以神力加被我們,我在您的面前也發如是清淨本願:"
+            ),
+            Verse(
+                number: 9,
+                text: "First vow: May all sentient beings be equal and at ease; Second vow: May all undertakings benefit the masses; Third vow: May panic and terror be kept far away; Fourth vow: May all sentient beings calmly uphold bodhi; Fifth vow: May man-made calamities and natural disasters disappear completely;",
+                pinyin: "dì yī yuàn: yuàn suǒ yǒu zhòng shēng píng děng zì zài, dì èr yuàn: yuàn suǒ zuò shì yè lì yì dà zhòng, dì sān yuàn: yuàn jīng huāng kǒng bù cóng cǐ yuǎn lí, dì sì yuàn: yuàn yī qiè yǒu qíng ān zhù pú tí, dì wǔ yuàn: yuàn tiān zāi rén huò xiāo shī wú xíng,",
+                chinese: "第一願:願所有眾生平等自在,第二願:願所作事業利益大眾,第三願:願驚慌恐怖從此遠離,第四願:願一切有情安住菩提,第五願:願天災人禍消失無形,"
+            ),
+            Verse(
+                number: 10,
+                text: "Sixth vow: May all sentient beings be free from illness and suffering; Seventh vow: May all sentient beings be protected from harm; Eighth vow: May all sentient beings be free from fear; Ninth vow: May all sentient beings be free from obstacles; Tenth vow: May all sentient beings be free from poverty; Eleventh vow: May all sentient beings be free from ignorance; Twelfth vow: May all sentient beings attain enlightenment.",
+                pinyin: "dì liù yuàn: yuàn yī qiè zhòng shēng wú bìng wú kǔ, dì qī yuàn: yuàn yī qiè zhòng shēng miǎn zāo shāng hài, dì bā yuàn: yuàn yī qiè zhòng shēng yuǎn lí kǒng jù, dì jiǔ yuàn: yuàn yī qiè zhòng shēng pò chú zhàng ài, dì shí yuàn: yuàn yī qiè zhòng shēng tuō lí pín kùn, dì shí yī yuàn: yuàn yī qiè zhòng shēng chú jìn wú míng, dì shí èr yuàn: yuàn yī qiè zhòng shēng zhèng dé pú tí。",
+                chinese: "第六願:願一切眾生無病無苦,第七願:願一切眾生免遭傷害,第八願:願一切眾生遠離恐懼,第九願:願一切眾生破除障礙,第十願:願一切眾生脫離貧困,第十一願:願一切眾生除盡無明,第十二願:願一切眾生證得菩提。"
+            ),
+            Verse(
+                number: 11,
+                text: "Oh great, compassionate Medicine Buddha! We make offerings to you With our pure deeds of body, speech, and mind; We take you as our model With our zealous progress in the study of morality, meditative concentration, and wisdom;",
+                pinyin: "cí bēi wěi dà de yào shī rú lái! wǒ men yǐ qīng jìng de shēn kǒu yì yè gòng yǎng nín, wǒ men yǐ jīng jìn de jiè dìng huì xué xiào fǎ nín;",
+                chinese: "慈悲偉大的藥師如來!我們以清淨的身口意業供養您,我們以精進的戒定慧學效法您;"
+            ),
+            Verse(
+                number: 12,
+                text: "I pray that you give, with your great compassion, Your respect-inspiring virtues all over the Dharma realms To fulfill our wishes, To let our human world also establish the Pure Land of the East. Oh great, compassionate Medicine Buddha, Please accept my sincerest prayer!",
+                pinyin: "qí qiú nín shī shě dà cí dà bēi, jiāng nín de wēi dé biàn mǎn fǎ jiè, mǎn zú wǒ men de yuàn wàng, ràng wǒ men rén jiān yě néng jiàn shè liú lí jìng tǔ。cí bēi wěi dà de yào shī rú lái! qǐng qiú nín jiē shòu wǒ zhì chéng de qí yuàn!",
+                chinese: "祈求您施捨大慈大悲,將您的威德遍滿法界,滿足我們的願望,讓我們人間也能建設琉璃淨土。慈悲偉大的藥師如來!請求您接受我至誠的祈願!"
+            )
+        ]
+        for verse in mbChapter19.verses {
+            verse.chapter = mbChapter19
+        }
+        
+        medicineBuddhaSutra.chapters.append(contentsOf: [mbChapter1, mbChapter2, mbChapter3, mbChapter4, mbChapter5, mbChapter6, mbChapter7, mbChapter8, mbChapter9, mbChapter10, mbChapter11, mbChapter12, mbChapter13, mbChapter14, mbChapter15, mbChapter16, mbChapter17, mbChapter18, mbChapter19])
+        context.insert(medicineBuddhaSutra)
+        }
+        
+        // The Lotus Sutra's Universal Gate Chapter on Avalokitesvara Bodhisattva
+        if shouldLoadLotusSutraUniversalGate {
+        let lotusUniversalGate = BuddhistText(
+            title: "The Universal Gateway of Guanyin Bodhisattva (普門品)",
+            author: "Buddha",
+            textDescription: "The Universal Gate Chapter on Avalokitesvara Bodhisattva (妙法蓮華經觀世音菩薩普門品)",
+            category: "Sutra",
+            coverImageName: "UniversalGateway"
+        )
+        
+        let lgChapter1 = Chapter(number: 1, title: "Praise of Holy Water")
+        lgChapter1.text = lotusUniversalGate
+        lgChapter1.verses = [
+            Verse(
+                number: 1,
+                text: "With willow twigs, may the holy water be sprinkled on the three thousand realms.",
+                pinyin: "yáng zhī jìng shuǐ biàn sǎ sān qiān",
+                chinese: "楊枝淨水遍灑三千"
+            ),
+            Verse(
+                number: 2,
+                text: "May the nature of emptiness and eight virtues benefit heaven and earth.",
+                pinyin: "xìng kōng bā dé lì rén tiān",
+                chinese: "性空八德利人天"
+            ),
+            Verse(
+                number: 3,
+                text: "May good fortune and long life both be enhanced and extended. May wrongdoing be extinguished and be gone.",
+                pinyin: "fú shòu guǎng zēng yán, miè zuì xiāo qiān",
+                chinese: "福壽廣增延, 滅罪消愆"
+            ),
+            Verse(
+                number: 4,
+                text: "Burning flames transform into red lotus blossoms.",
+                pinyin: "huǒ yàn huà hóng lián",
+                chinese: "火燄化紅蓮"
+            ),
+            Verse(
+                number: 5,
+                text: "We take refuge in Avalokitesvara Bodhisattva-Mahasattva. (repeat three times)",
+                pinyin: "nán mó guān shì yīn pú sà, mó hē sà (sān chēng)",
+                chinese: "南無觀世音菩薩, 摩訶薩 (三稱)"
+            )
+        ]
+        for verse in lgChapter1.verses {
+            verse.chapter = lgChapter1
+        }
+        
+        let lgChapter2 = Chapter(number: 2, title: "Sutra Opening Verse")
+        lgChapter2.text = lotusUniversalGate
+        lgChapter2.verses = [
+            Verse(
+                number: 1,
+                text: "Homage to great compassionate Avalokitesvara Bodhisattva. (repeat three times)",
+                pinyin: "nán mó dà bēi guān shì yīn pú sà (sān chēng)",
+                chinese: "南無大悲觀世音菩薩 (三稱)"
+            ),
+            Verse(
+                number: 2,
+                text: "The unexcelled, most profound, and exquisitely wondrous Dharma,",
+                pinyin: "wú shàng shèn shēn wēi miào fǎ",
+                chinese: "無上甚深微妙法"
+            ),
+            Verse(
+                number: 3,
+                text: "Is difficult to encounter throughout hundreds of thousands of millions of kalpas.",
+                pinyin: "bǎi qiān wàn jié nán zāo yù",
+                chinese: "百千萬劫難遭遇"
+            ),
+            Verse(
+                number: 4,
+                text: "Since we are now able to see, hear, receive and retain it,",
+                pinyin: "wǒ jīn jiàn wén dé shòu chí",
+                chinese: "我今見聞得受持"
+            ),
+            Verse(
+                number: 5,
+                text: "May we comprehend the true meaning of the Tathagata.",
+                pinyin: "yuàn jiě rú lái zhēn shí yì",
+                chinese: "願解如來真實義"
+            )
+        ]
+        for verse in lgChapter2.verses {
+            verse.chapter = lgChapter2
+        }
+        
+        let lgChapter3 = Chapter(number: 3, title: "The Universal Gate Chapter")
+        lgChapter3.text = lotusUniversalGate
+        lgChapter3.verses = [
+            Verse(
+                number: 1,
+                text: "At that time, Aksayamati Bodhisattva rose from his seat, bared his right shoulder, put his palms together facing the Buddha, and said, \"World-honored One, for what reason is Avalokitesvara Bodhisattva named 'Observing the Sounds of the World'?\"",
+                pinyin: "ěr shí wú jìn yì pú sà, jí cóng zuò qǐ, piān tǎn yòu jiān, hé zhǎng xiàng fó, ér zuò shì yán: \"shì zūn! guān shì yīn pú sà yǐ hé yīn yuán míng guān shì yīn?\"",
+                chinese: "爾時無盡意菩薩,即從座起,偏袒右肩,合掌向佛,而作是言:\"世尊!觀世音菩薩以何因緣名觀世音?\""
+            ),
+            Verse(
+                number: 2,
+                text: "The Buddha answered Aksayamati Bodhisattva, \"Good men, if there be countless hundreds of millions of billions of living beings experiencing all manner of suffering who hear of Avalokitesvara Bodhisattva and call his name with single-minded effort, then Avalokitesvara Bodhisattva will instantly observe the sound of their cries, and they will all be liberated.\"",
+                pinyin: "fó gào wú jìn yì pú sà: \"shàn nán zǐ! ruò yǒu wú liàng bǎi qiān wàn yì zhòng shēng, shòu zhū kǔ nǎo, wén shì guān shì yīn pú sà, yī xīn chēng míng, guān shì yīn pú sà jí shí guān qí yīn shēng, jiē dé jiě tuō.\"",
+                chinese: "佛告無盡意菩薩:\"善男子!若有無量百千萬億眾生,受諸苦惱,聞是觀世音菩薩,一心稱名,觀世音菩薩即時觀其音聲,皆得解脫。\""
+            ),
+            Verse(
+                number: 3,
+                text: "\"If anyone who upholds the name of Avalokitesvara Bodhisattva were to fall into a great fire, the fire would be unable to burn that person due to the bodhisattva's awe-inspiring spiritual powers. If anyone, carried away by a flood, were to call his name, that person would immediately reach a shallow place.\"",
+                pinyin: "\"ruò yǒu chí shì guān shì yīn pú sà míng zhě, shè rù dà huǒ, huǒ bù néng shāo, yóu shì pú sà wēi shén lì gù. ruò wéi dà shuǐ suǒ piāo, chēng qí míng hào, jí dé qiǎn chù.\"",
+                chinese: "\"若有持是觀世音菩薩名者,設入大火,火不能燒,由是菩薩威神力故。若為大水所漂,稱其名號,即得淺處。\""
+            ),
+            Verse(
+                number: 4,
+                text: "\"If there are living beings in the hundreds of millions of billions who go out to sea in search of such treasures as gold, silver, lapis lazuli, mother of pearl, carnelian, coral, amber, and pearls, and if a fierce storm were to blow their ship off course to make landfall in the territory of raksas, and further if among them there is even one person who calls the name of Avalokitesvara Bodhisattva, then all of those people will be liberated from the torment of the raksas. This is why the bodhisattva is named 'Observing the Sounds of the World.'\"",
+                pinyin: "\"ruò yǒu bǎi qiān wàn yì zhòng shēng, wèi qiú jīn, yín, liú lí, chē qú, mǎ nǎo, shān hú, hǔ pò, zhēn zhū děng bǎo, rù yú dà hǎi, jiǎ shǐ hēi fēng chuī qí chuán fǎng, piāo duò luó chà guǐ guó, qí zhōng ruò yǒu nǎi zhì yī rén chēng guān shì yīn pú sà míng zhě, shì zhū rén děng, jiē dé jiě tuō luó chà zhī nán. yǐ shì yīn yuán, míng guān shì yīn.\"",
+                chinese: "\"若有百千萬億眾生,為求金、銀、琉璃、硨磲、瑪瑙、珊瑚、琥珀、真珠等寶,入於大海,假使黑風吹其船舫,漂墮羅剎鬼國,其中若有乃至一人稱觀世音菩薩名者,是諸人等,皆得解脫羅剎之難。以是因緣,名觀世音。\""
+            ),
+            Verse(
+                number: 5,
+                text: "\"Or if someone facing imminent attack calls the name of Avalokitesvara Bodhisattva, the knives and clubs held by the attackers will then break into pieces, and that person will attain liberation.\"",
+                pinyin: "\"ruò fù yǒu rén, lín dāng bèi hài, chēng guān shì yīn pú sà míng zhě, bǐ suǒ zhí dāo zhàng, xún duàn huài, ér dé jiě tuō.\"",
+                chinese: "\"若復有人,臨當被害,稱觀世音菩薩名者,彼所執刀杖,尋段壞,而得解脫。\""
+            ),
+            Verse(
+                number: 6,
+                text: "\"If a great three thousand-fold world system was full of yaksas and raksas seeking to torment people, and they heard someone call the name of Avalokitesvara Bodhisattva, these evil demons would not even be able to see that person with their evil eyes, much less do any harm.\"",
+                pinyin: "\"ruò sān qiān dà qiān shì jiè, mǎn zhōng yè chā, luó chà, yù lái náo rén, wén qí chēng guān shì yīn pú sà míng zhě, shì zhū è guǐ, shàng bù néng yǐ è yǎn shì zhī, hé kuàng jiā hài.\"",
+                chinese: "\"若三千大千世界,滿中夜叉、羅剎,欲來惱人,聞其稱觀世音菩薩名者,是諸惡鬼,尚不能以惡眼視之,何況加害。\""
+            ),
+            Verse(
+                number: 7,
+                text: "\"Or if someone, whether guilty or not guilty, who is bound and fettered with manacles, shackles, and cangue calls the name of Avalokitesvara Bodhisattva, then all the bonds will be broken, and that person will instantly attain liberation.\"",
+                pinyin: "\"ruò fù yǒu rén, lín dāng bèi zhí, chēng guān shì yīn pú sà míng zhě, suǒ zhí suǒ qiè, jí dé jiě tuō.\"",
+                chinese: "\"若復有人,臨當被執,稱觀世音菩薩名者,所執所繫,即得解脫。\""
+            ),
+            Verse(
+                number: 8,
+                text: "\"If a great three thousand-fold world system were full of malevolent brigands, and a merchant chief were leading many merchants carrying valuable treasures along a perilous road, and among them one man were to speak up and say, 'Good men, do not be afraid. You should call the name of Avalokitesvara Bodhisattva with single-minded effort, for this bodhisattva can bestow fearlessness upon living beings. If you call his name, then you will surely be liberated from these malevolent brigands!'\"",
+                pinyin: "\"ruò guó tǔ mǎn zhōng yuàn zéi, yǒu yī shāng zhǔ, jiāng zhū shāng rén, jī chí zhòng bǎo, jīng guò xiǎn lù, qí zhōng yī rén zuò shì chàng yán: 'zhū shàn nán zǐ! wù dé kǒng bù, rǔ děng yīng dāng yī xīn chēng guān shì yīn pú sà míng hào, shì pú sà néng yǐ wú wèi shī yú zhòng shēng; rǔ děng ruò chēng míng zhě, yú cǐ yuàn zéi, dāng dé jiě tuō!'\"",
+                chinese: "\"若國土滿中怨賊,有一商主,將諸商人,齎持重寶,經過險路,其中一人作是唱言:'諸善男子!勿得恐怖,汝等應當一心稱觀世音菩薩名號,是菩薩能以無畏施於眾生;汝等若稱名者,於此怨賊,當得解脫!'\""
+            ),
+            Verse(
+                number: 9,
+                text: "\"Aksayamati, lofty indeed are the awe-inspiring spiritual powers of the great Avalokitesvara Bodhisattva.\"",
+                pinyin: "\"wú jìn yì! shì guān shì yīn pú sà, chéng jiù rú shì gōng dé.\"",
+                chinese: "\"無盡意!是觀世音菩薩,成就如是功德。\""
+            ),
+            Verse(
+                number: 10,
+                text: "\"If any living beings are much given to greed, let them keep in mind and revere Avalokitesvara Bodhisattva, and they will be freed from their greed. If any are much given to anger, let them keep in mind and revere Avalokitesvara Bodhisattva, and they will be freed from their anger. If any are much given to ignorance, let them keep in mind and revere Avalokitesvara Bodhisattva, and they will be freed from their ignorance.\"",
+                pinyin: "\"ruò yǒu zhòng shēng duō yú yín yù, cháng niàn jìng lǐ guān shì yīn pú sà, biàn dé lǐ yù. ruò duō chēn huì, cháng niàn jìng lǐ guān shì yīn pú sà, biàn dé lǐ chēn huì. ruò duō yú chī, cháng niàn jìng lǐ guān shì yīn pú sà, biàn dé lǐ yú chī.\"",
+                chinese: "\"若有眾生多於淫欲,常念恭敬觀世音菩薩,便得離欲。若多瞋恚,常念恭敬觀世音菩薩,便得離瞋恚。若多愚癡,常念恭敬觀世音菩薩,便得離愚癡。\""
+            ),
+            Verse(
+                number: 11,
+                text: "\"If any woman wishes for a male child by worshipping and making offerings to Avalokitesvara Bodhisattva, she will then give birth to a son blessed with merit and wisdom. If she wishes for a female child, she will then give birth to a daughter blessed with well-formed and attractive features, one who has planted the roots of virtue over lifetimes and is cherished and respected by all.\"",
+                pinyin: "\"ruò yǒu nǚ rén, shè yù qiú nán, lǐ bài gōng yǎng guān shì yīn pú sà, biàn shēng fú dé zhì huì zhī nán; shè yù qiú nǚ, biàn shēng duān zhèng yǒu xiàng zhī nǚ, sù zhí dé běn, zhòng rén ài jìng.\"",
+                chinese: "\"若有女人,設欲求男,禮拜供養觀世音菩薩,便生福德智慧之男;設欲求女,便生端正有相之女,宿植德本,眾人愛敬。\""
+            ),
+            Verse(
+                number: 12,
+                text: "\"This is why all of you should single-mindedly make offerings to Avalokitesvara Bodhisattva, for it is the great Avalokitesvara Bodhisattva who can bestow fearlessness in the midst of terror and in dire circumstances. This is why everyone in this Saha World calls him the bestower of fearlessness.\"",
+                pinyin: "\"shì gù zhòng shēng, cháng yīng xīn niàn. ruò yǒu zhòng shēng gōng jìng lǐ bài guān shì yīn pú sà, fú bù táng juān. shì gù zhòng shēng jiē yīng shòu chí guān shì yīn pú sà míng hào.\"",
+                chinese: "\"是故眾生,常應心念。若有眾生恭敬禮拜觀世音菩薩,福不唐捐。是故眾生皆應受持觀世音菩薩名號。\""
+            ),
+            Verse(
+                number: 13,
+                text: "The Buddha told Aksayamati Bodhisattva, \"Good men, if there are living beings in this land who should be liberated by someone in the form of a Buddha, then Avalokitesvara Bodhisattva will manifest in the form of a Buddha and teach the Dharma to them. For those who should be liberated by someone in the form of a pratyekabuddha, then Avalokitesvara Bodhisattva will manifest in the form of a pratyekabuddha and teach the Dharma to them.\"",
+                pinyin: "\"fó gào wú jìn yì pú sà: 'shàn nán zǐ! ruò yǒu guó tǔ zhòng shēng, yīng yǐ fó shēn dé dù zhě, guān shì yīn pú sà jí xiàn fó shēn ér wéi shuō fǎ. yīng yǐ pì zhī fó shēn dé dù zhě, jí xiàn pì zhī fó shēn ér wéi shuō fǎ.'\"",
+                chinese: "\"佛告無盡意菩薩:'善男子!若有國土眾生,應以佛身得度者,觀世音菩薩即現佛身而為說法。應以辟支佛身得度者,即現辟支佛身而為說法。'\""
+            ),
+            Verse(
+                number: 14,
+                text: "\"For those who should be liberated by someone in the form of a sravaka, then he will manifest in the form of a sravaka and teach the Dharma to them. For those who should be liberated by someone in the form of King Brahma, then he will manifest in the form of King Brahma and teach the Dharma to them.\"",
+                pinyin: "\"yīng yǐ shēng wén shēn dé dù zhě, jí xiàn shēng wén shēn ér wéi shuō fǎ. yīng yǐ fàn wáng shēn dé dù zhě, jí xiàn fàn wáng shēn ér wéi shuō fǎ.\"",
+                chinese: "\"應以聲聞身得度者,即現聲聞身而為說法。應以梵王身得度者,即現梵王身而為說法。\""
+            ),
+            Verse(
+                number: 15,
+                text: "\"For those who should be liberated by someone in the form of a young boy or young girl, then he will manifest in the form of a young boy or young girl and teach the Dharma to them. For those who should be liberated by someone in such forms as a deva, a naga, a yaksa, a gandharva, an asura, a garuda, a kimnara, a mahoraga, a human or a nonhuman being, then he will manifest in all these forms and teach the Dharma to them.\"",
+                pinyin: "\"yīng yǐ tóng nán tóng nǚ shēn dé dù zhě, jí xiàn tóng nán tóng nǚ shēn ér wéi shuō fǎ. yīng yǐ tiān, lóng, yè chā, qián tà pó, ā xiū luó, jiā lóu luó, jǐn nà luó, mó hóu luó qié, rén, fēi rén děng shēn dé dù zhě, jí jiē xiàn zhī ér wéi shuō fǎ.\"",
+                chinese: "\"應以童男童女身得度者,即現童男童女身而為說法。應以天、龍、夜叉、乾闥婆、阿修羅、迦樓羅、緊那羅、摩睺羅伽、人、非人等身得度者,即皆現之而為說法。\""
+            ),
+            Verse(
+                number: 16,
+                text: "\"Aksayamati, such is the merit that Avalokitesvara Bodhisattva has accomplished, and the various forms in which he wanders the various lands bringing liberation to living beings.\"",
+                pinyin: "\"wú jìn yì! shì guān shì yīn pú sà, chéng jiù rú shì gōng dé, yǐ zhǒng zhǒng xíng yóu lì zhū guó tǔ, dù tuō zhòng shēng.\"",
+                chinese: "\"無盡意!是觀世音菩薩,成就如是功德,以種種形遊歷諸國土,度脫眾生。\""
+            ),
+            Verse(
+                number: 17,
+                text: "\"World-honored One with all the wonderful signs, Let me now ask about him once more: For what reason is this son of the Buddha Named 'Observing the Sounds of the World'?\"",
+                pinyin: "\"shì zūn miào xiàng jù, wǒ jīn chóng wèn bǐ: fó zǐ hé yīn yuán, míng wéi guān shì yīn?\"",
+                chinese: "\"世尊妙相具,我今重問彼:佛子何因緣,名為觀世音?\""
+            ),
+            Verse(
+                number: 18,
+                text: "\"You listen now to the practice of Avalokitesvara, Who well responds to every region. His great vow is as deep as the sea, Inconceivable even after many kalpas. Having served Buddhas in the hundreds of billions, He has made a great, pure vow.\"",
+                pinyin: "\"jù zú miào xiàng zūn, jí dá wú jìn yì: rǔ tīng guān yīn xíng, shàn yìng zhū fāng suǒ, hóng shì shēn rú hǎi, lì jié bù sī yì, shì duō qiān yì fó, fā dà qīng jìng yuàn.\"",
+                chinese: "\"具足妙相尊,偈答無盡意:汝聽觀音行,善應諸方所,弘誓深如海,歷劫不思議,侍多千億佛,發大清淨願。\""
+            ),
+            Verse(
+                number: 19,
+                text: "\"Let me briefly tell you: Hearing his name and seeing his form, Keeping him unremittingly in mind, Can eliminate all manner of suffering.\"",
+                pinyin: "\"wǒ wéi rǔ lüè shuō, wén míng jí jiàn shēn, xīn niàn bù kōng guò, néng miè zhū yǒu kǔ.\"",
+                chinese: "\"我為汝略說,聞名及見身,心念不空過,能滅諸有苦。\""
+            ),
+            Verse(
+                number: 20,
+                text: "\"Suppose someone with harmful intent, Casts you into a great pit of fire; Keep in mind Avalokitesvara's powers, And the pit of fire will change into a pond.\"",
+                pinyin: "\"jiǎ shǐ xīng hài yì, tuī luò dà huǒ kēng, niàn bǐ guān yīn lì, huǒ kēng biàn chéng chí.\"",
+                chinese: "\"假使興害意,推落大火坑,念彼觀音力,火坑變成池。\""
+            ),
+            Verse(
+                number: 21,
+                text: "\"Or you are cast adrift upon an immense ocean, Menaced by dragons, fish, and demons; Keep in mind Avalokitesvara's powers, And the waves will not drown you.\"",
+                pinyin: "\"huò piāo liú jù hǎi, lóng yú zhū guǐ nán, niàn bǐ guān yīn lì, bō làng bù néng mò.\"",
+                chinese: "\"或漂流巨海,龍魚諸鬼難,念彼觀音力,波浪不能沒。\""
+            ),
+            Verse(
+                number: 22,
+                text: "\"Or someone pushes you down, From the top of Mount Sumeru; Keep in mind Avalokitesvara's powers, And you will hang in the sky like the sun.\"",
+                pinyin: "\"huò zài xū mí fēng, wèi rén suǒ tuī duò, niàn bǐ guān yīn lì, rú rì xū kōng zhù.\"",
+                chinese: "\"或在須彌峰,為人所推墮,念彼觀音力,如日虛空住。\""
+            ),
+            Verse(
+                number: 23,
+                text: "\"Or you are pursued by evil doers, Who push you down from Mount Vajra; Keep in mind Avalokitesvara's powers, And not one of your hairs will be harmed.\"",
+                pinyin: "\"huò bèi è rén zhú, duò luò jīn gāng shān, niàn bǐ guān yīn lì, bù néng sǔn yī máo.\"",
+                chinese: "\"或被惡人逐,墮落金剛山,念彼觀音力,不能損一毛。\""
+            ),
+            Verse(
+                number: 24,
+                text: "\"Or if surrounded by malevolent brigands, Each one brandishing a knife to attack you; Keep in mind Avalokitesvara's powers, And they will all experience a mind of loving-kindness.\"",
+                pinyin: "\"huò zhí yuàn zéi rào, gè zhí dāo jiā hài, niàn bǐ guān yīn lì, xián jí qí cí xīn.\"",
+                chinese: "\"或值怨賊繞,各執刀加害,念彼觀音力,咸即起慈心。\""
+            ),
+            Verse(
+                number: 25,
+                text: "\"Or if persecuted by the royal court, Facing death by execution; Keep in mind Avalokitesvara's powers, And the executioner's blade will break into pieces.\"",
+                pinyin: "\"huò zāo wáng nán kǔ, lín xíng yù shòu zhōng, niàn bǐ guān yīn lì, dāo xún duàn duàn huài.\"",
+                chinese: "\"或遭王難苦,臨刑欲壽終,念彼觀音力,刀尋段段壞。\""
+            ),
+            Verse(
+                number: 26,
+                text: "\"Or if imprisoned with cangue and chains, Hands and feet manacled and shackled; Keep in mind Avalokitesvara's powers, And the bonds will loosen and you will be liberated.\"",
+                pinyin: "\"huò qiú jìn jiā suǒ, shǒu zú bèi chǒu xiè, niàn bǐ guān yīn lì, shì rán dé jiě tuō.\"",
+                chinese: "\"或囚禁枷鎖,手足被杻械,念彼觀音力,釋然得解脫。\""
+            ),
+            Verse(
+                number: 27,
+                text: "\"If there is someone who would do you harm, Using spells and various poisons; Keep in mind Avalokitesvara's powers, And any harm will rebound on the originator.\"",
+                pinyin: "\"zhòu zǔ zhū dú yào, suǒ yù hài shēn zhě, niàn bǐ guān yīn lì, huán zhuó yú běn rén.\"",
+                chinese: "\"咒詛諸毒藥,所欲害身者,念彼觀音力,還著於本人。\""
+            ),
+            Verse(
+                number: 28,
+                text: "\"Or if you encounter evil raksas, Venomous dragons, various ghosts, and the like; Keep in mind Avalokitesvara's powers, And then none of them will dare harm you.\"",
+                pinyin: "\"huò yù è luó chà, dú lóng zhū guǐ děng, niàn bǐ guān yīn lì, shí xī bù gǎn hài.\"",
+                chinese: "\"或遇惡羅剎,毒龍諸鬼等,念彼觀音力,時悉不敢害。\""
+            ),
+            Verse(
+                number: 29,
+                text: "\"If you are surrounded by evil beasts With their sharp teeth and claws so horrifying; Keep in mind Avalokitesvara's powers, And they will flee in all directions.\"",
+                pinyin: "\"ruò è shòu wéi rào, lì yá zhǎo kě pà, niàn bǐ guān yīn lì, jí zǒu wú biān fāng.\"",
+                chinese: "\"若惡獸圍繞,利牙爪可怕,念彼觀音力,疾走無邊方。\""
+            ),
+            Verse(
+                number: 30,
+                text: "\"When lizards, snakes, vipers, and scorpions Scorch you with their poisonous vapors; Keep in mind Avalokitesvara's powers, And they will retreat at the sound of your voice.\"",
+                pinyin: "\"yuán shé jí fù xiē, qì dú yān huǒ rán, niàn bǐ guān yīn lì, xún shēng zì huí qù.\"",
+                chinese: "\"蚖蛇及蝮蠍,氣毒煙火然,念彼觀音力,尋聲自迴去。\""
+            ),
+            Verse(
+                number: 31,
+                text: "\"When thunderclouds rumble with lighting strikes, As hailstones and torrential rains come down; Keep in mind Avalokitesvara's powers, And the storm will disperse that very moment.\"",
+                pinyin: "\"yún léi gǔ chè diàn, jiàng báo shù dà yǔ, niàn bǐ guān yīn lì, yìng shí dé xiāo sàn.\"",
+                chinese: "\"雲雷鼓掣電,降雹澍大雨,念彼觀音力,應時得消散。\""
+            ),
+            Verse(
+                number: 32,
+                text: "\"Living beings suffer in agony, Oppressed by immeasurable pain; The power of Avalokitesvara's wondrous wisdom Can bring liberation from the world's sufferings.\"",
+                pinyin: "\"zhòng shēng bèi kùn è, wú liàng kǔ bī shēn, guān yīn miào zhì lì, néng jiù shì jiān kǔ.\"",
+                chinese: "\"眾生被困厄,無量苦逼身,觀音妙智力,能救世間苦。\""
+            ),
+            Verse(
+                number: 33,
+                text: "\"Perfect in supernatural powers, Widely practicing the skillful means of wisdom, In all the lands of the ten directions, There is no place where he fails to manifest.\"",
+                pinyin: "\"jù zú shén tōng lì, guǎng xiū zhì fāng biàn, shí fāng zhū guó tǔ, wú chà bù xiàn shēn.\"",
+                chinese: "\"具足神通力,廣修智方便,十方諸國土,無剎不現身。\""
+            ),
+            Verse(
+                number: 34,
+                text: "\"The lower realms in all their forms, That of hell-beings, hungry ghosts, and animals, The sufferings of birth, old age, sickness, and death, He steadily brings them all to an end.\"",
+                pinyin: "\"zhǒng zhǒng zhū è qù, dì yù guǐ chù shēng, shēng lǎo bìng sǐ kǔ, yǐ jiàn xī lìng miè.\"",
+                chinese: "\"種種諸惡趣,地獄鬼畜生,生老病死苦,以漸悉令滅。\""
+            ),
+            Verse(
+                number: 35,
+                text: "\"Contemplation of truth, contemplation of purity, Contemplation of the vast and greater wisdom, Contemplation of compassion and contemplation of kindness; Ever longed for, ever looked up to.\"",
+                pinyin: "\"zhēn guān qīng jìng guān, guǎng dà zhì huì guān, bēi guān jí cí guān, cháng yuàn cháng zhān yǎng.\"",
+                chinese: "\"真觀清淨觀,廣大智慧觀,悲觀及慈觀,常願常瞻仰。\""
+            ),
+            Verse(
+                number: 36,
+                text: "\"His undefiled light of purity Is the wisdom-sun dispelling all darkness, What can quell winds and fires that bring disaster And illuminate the world universally.\"",
+                pinyin: "\"wú gòu qīng jìng guāng, huì rì pò zhū àn, néng fú zāi fēng huǒ, pǔ míng zhào shì jiān.\"",
+                chinese: "\"無垢清淨光,慧日破諸闇,能伏災風火,普明照世間。\""
+            ),
+            Verse(
+                number: 37,
+                text: "\"Precepts of his compassionate body are like rolling thunder; The profundity of his kind mind is like a great cloud; He showers us with Dharma rain like nectar, That extinguishes the flames of affliction.\"",
+                pinyin: "\"bēi tǐ jiè léi zhèn, cí yì miào dà yún, shù gān lù fǎ yǔ, miè chú fán nǎo yàn.\"",
+                chinese: "\"悲體戒雷震,慈意妙大雲,澍甘露法雨,滅除煩惱燄。\""
+            ),
+            Verse(
+                number: 38,
+                text: "\"When lawsuits bring you to court, Or when fear strikes you in battle, Keep in mind Avalokitesvara's powers, And the enemy forces will all retreat.\"",
+                pinyin: "\"zhēng sòng jīng guān chù, bù wèi jūn zhèn zhōng, niàn bǐ guān yīn lì, zhòng yuàn xī tuì sàn.\"",
+                chinese: "\"諍訟經官處,怖畏軍陣中,念彼觀音力,眾怨悉退散。\""
+            ),
+            Verse(
+                number: 39,
+                text: "\"He can be their aid and support! In possession of all merit and virtue, He views living beings with the eyes of loving-kindness; His ocean of accumulated merit is infinite, So worship him with prostrations.\"",
+                pinyin: "\"néng wéi zuò yī hù, jù yī qiē gōng dé, cí yǎn shì zhòng shēng, fú jù hǎi wú liàng, shì gù yīng dǐng lǐ.\"",
+                chinese: "\"能為作依怙,具一切功德,慈眼視眾生,福聚海無量,是故應頂禮。\""
+            ),
+            Verse(
+                number: 40,
+                text: "At this time Dharanimdhara Bodhisattva rose from his seat, came forward, and said to the Buddha, \"World-honored One, if there are living beings who hear this chapter on Avalokitesvara Bodhisattva about his freedom of action, his revelation of the universal gate, and his supernatural powers, it should be known that their merits are not few.\"",
+                pinyin: "ěr shí chí dì pú sà jí cóng zuò qǐ, qián bái fó yán: \"shì zūn! ruò yǒu zhòng shēng wén shì guān yīn pú sà pǐn zì zài zhī yè, pǔ mén shì xiàn shén tōng lì zhě, dāng zhī shì rén gōng dé bù shǎo.\"",
+                chinese: "爾時持地菩薩即從座起,前白佛言:\"世尊!若有眾生聞是觀音菩薩品自在之業,普門示現神通力者,當知是人功德不少。\""
+            ),
+            Verse(
+                number: 41,
+                text: "When the Buddha preached this chapter on the Universal Gate, the eighty-four thousand living beings assembled there all generated the aspiration to attain anuttara-samyak-sambodhi.",
+                pinyin: "fó shuō shì pǔ mén pǐn shí, zhòng zhōng bā wàn sì qiān zhòng shēng jiē fā wú děng děng ā nòu duō luó sān miǎo sān pú tí xīn.",
+                chinese: "佛說是普門品時,眾中八萬四千眾生皆發無等等阿耨多羅三藐三菩提心。"
+            )
+        ]
+        for verse in lgChapter3.verses {
+            verse.chapter = lgChapter3
+        }
+        
+        let lgChapter4 = Chapter(number: 4, title: "Dharani of Great Compassion")
+        lgChapter4.text = lotusUniversalGate
+        lgChapter4.verses = [
+            Verse(
+                number: 1,
+                text: "Namo ratnatrayaya. Namo arya avalokitesvaraya bodhisattvaya mahasattvaya.",
+                pinyin: "nán mó hē là dá nà duō là yè yē. nán mó ā lì yē, lú jié dì, shuò bō là yē, tí sà duò pó yē, mó hē sà duò pó yē, mó hē jiā lú ní jiā yē.",
+                chinese: "南無喝囉怛那哆囉夜耶。南無阿唎耶,盧羯帝,爍缽囉耶,提薩埵婆耶,摩訶薩埵婆耶,摩訶迦盧尼迦耶。"
+            ),
+            Verse(
+                number: 2,
+                text: "Om. Sarva raksa. Namo bhagavate. Arya avalokitesvaraya bodhisattvaya mahasattvaya. Namo ratnatrayaya.",
+                pinyin: "ān. sà pó là fá yì, shù dá nà dá xiě, nán mó xī jí lì duò yī méng ā lì yē, pó lú jí dì, shì fó là léng tuó pó, nán mó nà là jǐn chí.",
+                chinese: "唵。薩皤囉罰曳,數怛那怛寫,南無悉吉嚤埵伊蒙阿唎耶,婆盧吉帝,室佛囉楞馱婆,南無那囉謹墀。"
+            ),
+            Verse(
+                number: 3,
+                text: "He who recites this dharani will be protected by all Buddhas and Bodhisattvas, and all suffering will be eliminated.",
+                pinyin: "xī lì mó hē, pó duō shā miè, sà pó ā tā dòu shū péng, ā shì yùn, sà pó sà duō, nán mó pó sà duō, nán mó pó qiē, mó fá tè dòu.",
+                chinese: "醯利摩訶,皤哆沙咩,薩婆阿他、豆輸朋,阿逝孕,薩婆薩哆、那摩婆薩哆、那摩婆伽,摩罰特豆。"
+            ),
+            Verse(
+                number: 4,
+                text: "This dharani is the great compassionate heart of the Thousand-Handed and Thousand-Eyed One, who removes all obstacles and brings liberation to all beings.",
+                pinyin: "dá zhí tā, ān, ā pó lú xī, lú jiā dì, jiā luó dì, yí xī lì, mó hē pú tí sà duò.",
+                chinese: "怛姪他,唵,阿婆盧醯,盧迦帝,迦羅帝,夷醯唎,摩訶菩提薩埵。"
+            )
+        ]
+        for verse in lgChapter4.verses {
+            verse.chapter = lgChapter4
+        }
+        
+        let lgChapter5 = Chapter(number: 5, title: "Triple Refuge")
+        lgChapter5.text = lotusUniversalGate
+        lgChapter5.verses = [
+            Verse(
+                number: 1,
+                text: "I take refuge in the Buddha, wishing that all sentient beings understand the Dharma and make the supreme vow.",
+                pinyin: "zì guī yī fó, dāng yuàn zhòng shēng, tǐ jiě dà dào, fā wú shàng xīn.",
+                chinese: "自皈依佛,當願眾生,體解大道,發無上心。"
+            ),
+            Verse(
+                number: 2,
+                text: "I take refuge in the Dharma, wishing that all sentient beings study the sutras diligently and obtain an ocean of wisdom.",
+                pinyin: "zì guī yī fǎ, dāng yuàn zhòng shēng, shēn rù jīng zàng, zhì huì rú hǎi.",
+                chinese: "自皈依法,當願眾生,深入經藏,智慧如海。"
+            ),
+            Verse(
+                number: 3,
+                text: "I take refuge in the Sangha, wishing that all sentient beings lead the masses in harmony without obstruction.",
+                pinyin: "zì guī yī sēng, dāng yuàn zhòng shēng, tǒng lǐ dà zhòng, yī qiē wú ài.",
+                chinese: "自皈依僧,當願眾生,統理大眾,一切無礙。"
+            )
+        ]
+        for verse in lgChapter5.verses {
+            verse.chapter = lgChapter5
+        }
+        
+        let lgChapter6 = Chapter(number: 6, title: "Dedication of Merit")
+        lgChapter6.text = lotusUniversalGate
+        lgChapter6.verses = [
+            Verse(
+                number: 1,
+                text: "May kindness, compassion, joy, and equanimity pervade the dharma realms;",
+                pinyin: "cí bēi xǐ shě biàn fǎ jiè,",
+                chinese: "慈悲喜捨遍法界,"
+            ),
+            Verse(
+                number: 2,
+                text: "May all people and heavenly beings benefit from our blessings and friendship;",
+                pinyin: "xī fú jié yuán lì rén tiān;",
+                chinese: "惜福結緣利人天;"
+            ),
+            Verse(
+                number: 3,
+                text: "May our ethical practice of Chan, Pure Land, and Precepts help us to realize equality and patience;",
+                pinyin: "chán jìng jiè xíng píng děng rěn,",
+                chinese: "禪淨戒行平等忍,"
+            ),
+            Verse(
+                number: 4,
+                text: "May we undertake the great vows with humility and gratitude.",
+                pinyin: "cán kuì gǎn ēn dà yuàn xīn.",
+                chinese: "慚愧感恩大願心。"
+            )
+        ]
+        for verse in lgChapter6.verses {
+            verse.chapter = lgChapter6
+        }
+        
+        lotusUniversalGate.chapters.append(contentsOf: [lgChapter1, lgChapter2, lgChapter3, lgChapter4, lgChapter5, lgChapter6])
+        context.insert(lotusUniversalGate)
+        }
+        
+        // What the Buddha Taught by Walpola Rahula (PDF Book)
+        if shouldLoadWhatBuddhaTaught {
+        let whatBuddhaTaught = BuddhistText(
+            title: "What the Buddha Taught",
+            author: "Walpola Rahula",
+            textDescription: "A classic introduction to Buddhism by Venerable Walpola Rahula",
+            category: "Teaching",
+            coverImageName: "WhatTheBuddhaTaught"
+        )
+        // This is a PDF book, so we'll add a placeholder chapter that indicates it's a PDF
+        let pdfChapter = Chapter(number: 1, title: "PDF Book")
+        pdfChapter.text = whatBuddhaTaught
+        pdfChapter.verses = [
+            Verse(number: 1, text: "This is a PDF book. Tap to open the PDF viewer.")
+        ]
+        for verse in pdfChapter.verses {
+            verse.chapter = pdfChapter
+        }
+        whatBuddhaTaught.chapters.append(pdfChapter)
+        context.insert(whatBuddhaTaught)
+        }
+
+        // The Life of the Buddha (PDF Book)
+        if shouldLoadLifeOfBuddha {
+        let lifeOfBuddha = BuddhistText(
+            title: "The Life of the Buddha",
+            author: "Bhikkhu Ñāṇamoli",
+            textDescription: "The Life of the Buddha according to the Pali Canon",
+            category: "Teaching",
+            coverImageName: "TheLifeOfBuddha"
+        )
+        // This is a PDF book, so we'll add a placeholder chapter that indicates it's a PDF
+        let pdfChapter = Chapter(number: 1, title: "PDF Book")
+        pdfChapter.text = lifeOfBuddha
+        pdfChapter.verses = [
+            Verse(number: 1, text: "This is a PDF book. Tap to open the PDF viewer.")
+        ]
+        for verse in pdfChapter.verses {
+            verse.chapter = pdfChapter
+        }
+        lifeOfBuddha.chapters.append(pdfChapter)
+        context.insert(lifeOfBuddha)
+        }
+
+        // 流浪者之歌 (Siddhartha) by Hermann Hesse (PDF Book)
+        if shouldLoadSiddhartha {
+        let siddhartha = BuddhistText(
+            title: "流浪者之歌 (Siddhartha)",
+            author: "Hermann Hesse",
+            textDescription: "An allegorical novel about the spiritual journey of self-discovery",
+            category: "Teaching",
+            coverImageName: "Siddhartha"
+        )
+        // This is a PDF book, so we'll add a placeholder chapter that indicates it's a PDF
+        let pdfChapter = Chapter(number: 1, title: "PDF Book")
+        pdfChapter.text = siddhartha
+        pdfChapter.verses = [
+            Verse(number: 1, text: "This is a PDF book. Tap to open the PDF viewer.")
+        ]
+        for verse in pdfChapter.verses {
+            verse.chapter = pdfChapter
+        }
+        siddhartha.chapters.append(pdfChapter)
+        context.insert(siddhartha)
+        }
+
         try? context.save()
     }
 }

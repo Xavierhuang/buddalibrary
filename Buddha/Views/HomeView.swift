@@ -24,10 +24,25 @@ struct HomeView: View {
                     
                     // Quick Stats
                     HStack(spacing: 15) {
-                        StatCard(title: "Texts", count: texts.count, icon: "book.fill", color: .blue)
-                        StatCard(title: "Notes", count: notes.count, icon: "note.text", color: .green)
-                        StatCard(title: "Bookmarks", count: bookmarks.count, icon: "bookmark.fill", color: .orange)
-                        StatCard(title: "Highlights", count: highlights.count, icon: "highlighter", color: .purple)
+                        NavigationLink(destination: LibraryView()) {
+                            StatCard(title: NSLocalizedString("Texts", comment: ""), count: texts.count, icon: "book.fill", color: .blue)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        NavigationLink(destination: NotesView()) {
+                            StatCard(title: NSLocalizedString("Notes", comment: ""), count: notes.count, icon: "note.text", color: .green)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        NavigationLink(destination: BookmarksView()) {
+                            StatCard(title: NSLocalizedString("Bookmarks", comment: ""), count: bookmarks.count, icon: "bookmark.fill", color: .orange)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        NavigationLink(destination: HighlightsView()) {
+                            StatCard(title: NSLocalizedString("Highlights", comment: ""), count: highlights.count, icon: "highlighter", color: .purple)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal)
                     
@@ -39,6 +54,11 @@ struct HomeView: View {
                     // Bookmarks Section
                     if !bookmarks.isEmpty {
                         BookmarksSection(bookmarks: Array(bookmarks.prefix(5)))
+                    }
+                    
+                    // Highlights Section
+                    if !highlights.isEmpty {
+                        HighlightsSection(highlights: Array(highlights.prefix(5)))
                     }
                     
                     // Continue Reading
@@ -56,12 +76,12 @@ struct HomeView: View {
 struct DailyVerseCard: View {
     @Query private var texts: [BuddhistText]
     
-    var dailyVerse: (text: String, source: String)? {
+    var dailyVerse: (verse: Verse, source: String, textTitle: String, chapterNumber: Int)? {
         guard !texts.isEmpty else { return nil }
         let allVerses = texts.flatMap { text in
             text.chapters.flatMap { chapter in
                 chapter.verses.map { verse in
-                    (verse.text, "\(text.title) - Chapter \(chapter.number)")
+                    (verse, "\(text.title) - \(String(format: NSLocalizedString("Chapter %d", comment: ""), chapter.number))", text.title, chapter.number)
                 }
             }
         }
@@ -72,26 +92,40 @@ struct DailyVerseCard: View {
         return allVerses[index]
     }
     
+    // Get the appropriate text to display based on locale
+    private func getDisplayText(for verse: Verse) -> String {
+        if LocalizationService.isChineseLocale {
+            // For Chinese users: prefer Chinese, then Pinyin, then English
+            return verse.chinese ?? verse.pinyin ?? verse.text
+        } else {
+            // For non-Chinese users: show English
+            return verse.text
+        }
+    }
+    
     var body: some View {
-        if let verse = dailyVerse {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Daily Verse")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                Text(verse.text)
-                    .font(.body)
-                    .lineSpacing(6)
-                
-                Text(verse.source)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 4)
+        if let verseData = dailyVerse {
+            NavigationLink(destination: ReadingView(textTitle: verseData.textTitle, chapterNumber: verseData.chapterNumber)) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Daily Verse")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text(getDisplayText(for: verseData.verse))
+                        .font(.body)
+                        .lineSpacing(6)
+                    
+                    Text(verseData.source)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .buttonStyle(PlainButtonStyle())
             .padding(.horizontal)
         }
     }
@@ -127,16 +161,16 @@ struct RecentReadingCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Recent Reading")
-                .font(.headline)
-                .foregroundColor(.secondary)
+                    Text("Recent Reading")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
             
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(history.textTitle)
                         .font(.body)
                         .fontWeight(.semibold)
-                    Text("Chapter \(history.chapterNumber)")
+                    Text(String(format: NSLocalizedString("Chapter %d", comment: ""), history.chapterNumber))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -254,11 +288,71 @@ struct BookmarkCard: View {
                 .fontWeight(.semibold)
                 .lineLimit(2)
             
-            Text("Chapter \(bookmark.chapterNumber)")
+            Text(String(format: NSLocalizedString("Chapter %d", comment: ""), bookmark.chapterNumber))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
         .frame(width: 120, height: 100)
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+struct HighlightsSection: View {
+    let highlights: [Highlight]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recent Highlights")
+                    .font(.headline)
+                Spacer()
+                NavigationLink(destination: HighlightsView()) {
+                    Text("See All")
+                        .font(.subheadline)
+                }
+            }
+            .padding(.horizontal)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 15) {
+                    ForEach(highlights, id: \.id) { highlight in
+                        NavigationLink(destination: ReadingView(textTitle: highlight.textTitle, chapterNumber: highlight.chapterNumber)) {
+                            HighlightCard(highlight: highlight)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+}
+
+struct HighlightCard: View {
+    let highlight: Highlight
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Circle()
+                .fill(Color.fromString(highlight.color))
+                .frame(width: 40, height: 40)
+            
+            Text(highlight.textTitle)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .lineLimit(2)
+            
+            Text(String(format: NSLocalizedString("Chapter %d", comment: ""), highlight.chapterNumber))
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text(highlight.text)
+                .font(.caption)
+                .lineLimit(2)
+                .foregroundColor(.secondary)
+        }
+        .frame(width: 120, height: 120)
         .padding()
         .background(Color(.systemGray6))
         .cornerRadius(12)

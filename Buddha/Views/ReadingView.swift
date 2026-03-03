@@ -19,12 +19,21 @@ struct ReadingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("fontSize") private var fontSize: Double = 16
     @AppStorage("isDarkMode") private var isDarkMode: Bool = false
+    @AppStorage("showEnglishTranslation") private var showEnglishTranslation: Bool = true
+    
+    // Initialize based on locale if not already set
+    private func initializeEnglishTranslationSetting() {
+        if UserDefaults.standard.object(forKey: "showEnglishTranslation") == nil {
+            showEnglishTranslation = LocalizationService.shouldShowEnglishByDefault
+        }
+    }
     
     @State private var selectedVerse: Verse? = nil
     @State private var showNoteSheet = false
     @State private var showHighlightSheet = false
     @State private var showSettingsSheet = false
     @State private var showChapterList = false
+    @StateObject private var ttsService = TextToSpeechService()
     
     var currentText: BuddhistText? {
         texts.first { $0.title == textTitle }
@@ -63,7 +72,7 @@ struct ReadingView: View {
                         Text(chapter.title)
                             .font(.title2)
                             .fontWeight(.bold)
-                        Text("\(textTitle) - Chapter \(chapter.number)")
+                        Text("\(textTitle) - \(String(format: NSLocalizedString("Chapter %d", comment: ""), chapter.number))")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -77,6 +86,7 @@ struct ReadingView: View {
                             textTitle: textTitle,
                             chapterNumber: chapterNumber,
                             fontSize: fontSize,
+                            showEnglishTranslation: showEnglishTranslation,
                             isHighlighted: isVerseHighlighted(verse),
                             highlightColor: getHighlightColor(for: verse),
                             onLongPress: {
@@ -100,7 +110,7 @@ struct ReadingView: View {
                             NavigationLink(destination: ReadingView(textTitle: textTitle, chapterNumber: prevChapter.number)) {
                                 HStack {
                                     Image(systemName: "chevron.left")
-                                    Text("Chapter \(prevChapter.number)")
+                                    Text(String(format: NSLocalizedString("Chapter %d", comment: ""), prevChapter.number))
                                 }
                                 .font(.subheadline)
                                 .foregroundColor(.blue)
@@ -117,7 +127,7 @@ struct ReadingView: View {
                         if let nextChapter = nextChapter {
                             NavigationLink(destination: ReadingView(textTitle: textTitle, chapterNumber: nextChapter.number)) {
                                 HStack {
-                                    Text("Chapter \(nextChapter.number)")
+                                    Text(String(format: NSLocalizedString("Chapter %d", comment: ""), nextChapter.number))
                                     Image(systemName: "chevron.right")
                                 }
                                 .font(.subheadline)
@@ -158,49 +168,58 @@ struct ReadingView: View {
                     Button(action: {
                         showChapterList = true
                     }) {
-                        Text("Ch. \(chapterNumber)")
+                        Text(String(format: NSLocalizedString("Ch. %d", comment: ""), chapterNumber))
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button(action: { showSettingsSheet = true }) {
-                            Label("Settings", systemImage: "gearshape")
-                        }
-                        
-                        Button(action: { addBookmark() }) {
-                            Label("Bookmark", systemImage: "bookmark")
-                        }
-                        
-                        Button(action: { 
-                            // If no verse is selected, use the first verse of the chapter
-                            if selectedVerse == nil, let firstVerse = sortedVerses.first {
-                                selectedVerse = firstVerse
-                            }
-                            if selectedVerse != nil {
-                                showNoteSheet = true
+                    HStack(spacing: 12) {
+                        // TTS Control Button
+                        Button(action: {
+                            if ttsService.isSpeaking {
+                                ttsService.pause()
+                            } else {
+                                if ttsService.currentVerse == nil {
+                                    ttsService.speakVerses(sortedVerses)
+                                } else {
+                                    ttsService.continueSpeaking()
+                                }
                             }
                         }) {
-                            Label("Add Note", systemImage: "note.text")
+                            Image(systemName: ttsService.isSpeaking ? "pause.circle.fill" : "speaker.wave.2.fill")
+                                .font(.title3)
                         }
-                        .disabled(selectedVerse == nil && sortedVerses.isEmpty)
+                        .disabled(sortedVerses.isEmpty)
                         
-                        Button(action: { 
-                            // If no verse is selected, use the first verse of the chapter
-                            if selectedVerse == nil, let firstVerse = sortedVerses.first {
-                                selectedVerse = firstVerse
+                        Menu {
+                            Button(action: { showSettingsSheet = true }) {
+                                Label("Settings", systemImage: "gearshape")
                             }
-                            if selectedVerse != nil {
-                                showHighlightSheet = true
+                            
+                            Button(action: { addBookmark() }) {
+                                Label("Bookmark", systemImage: "bookmark")
                             }
-                        }) {
-                            Label("Highlight", systemImage: "highlighter")
+                            
+                            Button(action: { 
+                                if selectedVerse != nil {
+                                    showNoteSheet = true
+                                }
+                            }) {
+                                Label("Add Note", systemImage: "note.text")
+                            }
+                            
+                            Button(action: { 
+                                if selectedVerse != nil {
+                                    showHighlightSheet = true
+                                }
+                            }) {
+                                Label("Highlight", systemImage: "highlighter")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
                         }
-                        .disabled(selectedVerse == nil && sortedVerses.isEmpty)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
@@ -239,18 +258,29 @@ struct ReadingView: View {
                 )
             }
             .onAppear {
+                initializeEnglishTranslationSetting()
                 saveReadingHistory()
+            }
+            .onDisappear {
+                ttsService.stop()
+            }
+            .overlay(alignment: .bottom) {
+                // TTS Controls Bar
+                if ttsService.isSpeaking || ttsService.currentVerse != nil {
+                    TTSControlBar(ttsService: ttsService, sortedVerses: sortedVerses)
+                }
             }
             } else {
                 VStack(spacing: 16) {
                     Text("Chapter not found")
                         .font(.headline)
                         .foregroundColor(.secondary)
-                    Text("Looking for: Chapter \(chapterNumber)")
+                    Text(String(format: NSLocalizedString("Looking for: Chapter %d", comment: ""), chapterNumber))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     if let text = currentText {
-                        Text("Available chapters: \(text.chapters.map { $0.number }.sorted().map { String($0) }.joined(separator: ", "))")
+                        let chaptersList = text.chapters.map { $0.number }.sorted().map { String($0) }.joined(separator: ", ")
+                        Text(String(format: NSLocalizedString("Available chapters: %@", comment: ""), chaptersList))
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding()
@@ -307,6 +337,7 @@ struct VerseView: View {
     let textTitle: String
     let chapterNumber: Int
     let fontSize: Double
+    let showEnglishTranslation: Bool
     let isHighlighted: Bool
     let highlightColor: Color?
     let onLongPress: () -> Void
@@ -349,11 +380,13 @@ struct VerseView: View {
                             .padding(.bottom, 4)
                     }
                     
-                    Text(verse.text)
-                        .font(.system(size: fontSize))
-                        .foregroundColor(.secondary)
-                        .italic()
-                        .lineSpacing(4)
+                    if showEnglishTranslation {
+                        Text(verse.text)
+                            .font(.system(size: fontSize))
+                            .foregroundColor(.secondary)
+                            .italic()
+                            .lineSpacing(4)
+                    }
                 } else {
                     // Single line format (just English)
                     Text(verse.text)
@@ -391,6 +424,76 @@ extension Color {
         case "pink": return .pink
         case "purple": return .purple
         default: return .yellow
+        }
+    }
+}
+
+struct TTSControlBar: View {
+    @ObservedObject var ttsService: TextToSpeechService
+    let sortedVerses: [Verse]
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+            
+            HStack(spacing: 20) {
+                // Previous button
+                Button(action: {
+                    ttsService.skipToPrevious()
+                }) {
+                    Image(systemName: "backward.fill")
+                        .font(.title3)
+                }
+                .disabled(!ttsService.isSpeaking && ttsService.currentVerse == nil)
+                
+                // Play/Pause button
+                Button(action: {
+                    if ttsService.isSpeaking {
+                        ttsService.pause()
+                    } else {
+                        if ttsService.currentVerse == nil {
+                            ttsService.speakVerses(sortedVerses)
+                        } else {
+                            ttsService.continueSpeaking()
+                        }
+                    }
+                }) {
+                    Image(systemName: ttsService.isSpeaking ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                        .foregroundColor(.blue)
+                }
+                
+                // Next button
+                Button(action: {
+                    ttsService.skipToNext()
+                }) {
+                    Image(systemName: "forward.fill")
+                        .font(.title3)
+                }
+                .disabled(!ttsService.isSpeaking && ttsService.currentVerse == nil)
+                
+                // Stop button
+                Button(action: {
+                    ttsService.stop()
+                }) {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.red)
+                }
+                
+                Spacer()
+                
+                // Current verse indicator
+                if let currentVerse = ttsService.currentVerse,
+                   let index = sortedVerses.firstIndex(where: { $0.id == currentVerse.id }) {
+                    Text(String(format: NSLocalizedString("Verse %d of %d", comment: ""), index + 1, sortedVerses.count))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: -2)
         }
     }
 }

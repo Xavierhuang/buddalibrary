@@ -1,0 +1,97 @@
+/* 
+  Localizable.strings
+  Buddha
+  
+  简体中文本地化
+*/
+
+// Navigation & Titles
+"Library" = "書庫";
+"Home" = "首頁";
+"Notes" = "筆記";
+"Audio" = "音頻";
+"Search" = "搜索";
+"Reading Settings" = "閱讀設置";
+"Done" = "完成";
+"Settings" = "設置";
+"About" = "關於";
+"Chapters" = "章節";
+
+// Reading View
+"Chapter" = "章";
+"Ch." = "章";
+"Next" = "下一章";
+"Chapter not found" = "未找到章節";
+"Looking for: Chapter %d" = "正在查找：第 %d 章";
+"Available chapters: %@" = "可用章節：%@";
+"Verse %d of %d" = "第 %d 節，共 %d 節";
+
+// Settings
+"Text Size" = "字體大小";
+"Current size: %dpt" = "當前大小：%d 點";
+"Appearance" = "外觀";
+"Dark Mode" = "深色模式";
+"Translation" = "翻譯";
+"Show English Translation" = "顯示英文翻譯";
+
+// Library
+"All" = "全部";
+"Search texts..." = "搜索文本...";
+"%d chapters" = "%d 章";
+"chapters" = "章";
+"Author:" = "作者：";
+"Open PDF" = "打開 PDF";
+"View the complete book" = "查看完整書籍";
+"%d verses" = "%d 節";
+
+// Home
+"Daily Verse" = "每日經文";
+"Texts" = "文本";
+"Notes" = "筆記";
+"Bookmarks" = "書籤";
+"Highlights" = "標記";
+"Recent Reading" = "最近閱讀";
+"Continue Reading" = "繼續閱讀";
+"Recent Bookmarks" = "最近書籤";
+"Recent Highlights" = "最近標記";
+"See All" = "查看全部";
+"No notes yet" = "暫無筆記";
+"Long press on a verse while reading to add a note" = "閱讀時長按經文可添加筆記";
+"Search notes..." = "搜索筆記...";
+"No bookmarks yet" = "暫無書籤";
+"Bookmark chapters while reading to access them quickly" = "閱讀時標記章節以便快速訪問";
+"Search bookmarks..." = "搜索書籤...";
+"No highlights yet" = "暫無標記";
+"Long press on a verse while reading to add a highlight" = "閱讀時長按經文可添加標記";
+"Search highlights..." = "搜索標記...";
+"Note" = "筆記";
+"Created:" = "創建時間：";
+"Updated:" = "更新時間：";
+"Verse %d" = "第 %d 節";
+
+// Notes & Bookmarks
+"Add Note" = "添加筆記";
+"Edit Note" = "編輯筆記";
+"Save" = "保存";
+"Cancel" = "取消";
+"Delete" = "刪除";
+
+// Search
+"Search" = "搜索";
+"Search Buddhist Texts" = "搜索佛經";
+"Enter a word or phrase to search across all texts" = "輸入詞語或短語以搜索所有文本";
+"No results found" = "未找到結果";
+"Try different keywords" = "嘗試不同的關鍵詞";
+"Search verses..." = "搜索經文...";
+"Ch. %d, V. %d" = "第 %d 章，第 %d 節";
+
+// Audio
+"Play" = "播放";
+"Pause" = "暫停";
+"Stop" = "停止";
+
+// Categories
+"Sutra" = "經";
+"Teaching" = "教法";
+"Liturgy" = "儀軌";
+

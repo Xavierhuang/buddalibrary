@@ -21,10 +21,10 @@ struct SearchView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 60))
                             .foregroundColor(.secondary)
-                        Text("Search Buddhist Texts")
+                        Text(NSLocalizedString("Search Buddhist Texts", comment: ""))
                             .font(.headline)
                             .foregroundColor(.secondary)
-                        Text("Enter a word or phrase to search across all texts")
+                        Text(NSLocalizedString("Enter a word or phrase to search across all texts", comment: ""))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -35,10 +35,10 @@ struct SearchView: View {
                         Image(systemName: "text.magnifyingglass")
                             .font(.system(size: 60))
                             .foregroundColor(.secondary)
-                        Text("No results found")
+                        Text(NSLocalizedString("No results found", comment: ""))
                             .font(.headline)
                             .foregroundColor(.secondary)
-                        Text("Try different keywords")
+                        Text(NSLocalizedString("Try different keywords", comment: ""))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -54,7 +54,7 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Search")
-            .searchable(text: $searchText, prompt: "Search verses...")
+            .searchable(text: $searchText, prompt: NSLocalizedString("Search verses...", comment: ""))
             .onChange(of: searchText) { oldValue, newValue in
                 performSearch(query: newValue)
             }
@@ -116,7 +116,7 @@ struct SearchResultRow: View {
                 Text(result.textTitle)
                     .font(.headline)
                 Spacer()
-                Text("Ch. \(result.chapterNumber), V. \(result.verseNumber)")
+                Text(String(format: NSLocalizedString("Ch. %d, V. %d", comment: ""), result.chapterNumber, result.verseNumber))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

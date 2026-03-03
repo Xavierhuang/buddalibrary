@@ -10,7 +10,15 @@ import SwiftUI
 struct ReadingSettingsView: View {
     @AppStorage("fontSize") private var fontSize: Double = 16
     @AppStorage("isDarkMode") private var isDarkMode: Bool = false
+    @AppStorage("showEnglishTranslation") private var showEnglishTranslation: Bool = true
     @Environment(\.dismiss) private var dismiss
+    
+    // Initialize based on locale if not already set
+    private func initializeEnglishTranslationSetting() {
+        if UserDefaults.standard.object(forKey: "showEnglishTranslation") == nil {
+            showEnglishTranslation = LocalizationService.shouldShowEnglishByDefault
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -24,7 +32,7 @@ struct ReadingSettingsView: View {
                             Text("A")
                                 .font(.system(size: 24))
                         }
-                        Text("Current size: \(Int(fontSize))pt")
+                        Text(String(format: NSLocalizedString("Current size: %dpt", comment: ""), Int(fontSize)))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -33,9 +41,16 @@ struct ReadingSettingsView: View {
                 Section("Appearance") {
                     Toggle("Dark Mode", isOn: $isDarkMode)
                 }
+                
+                Section("Translation") {
+                    Toggle("Show English Translation", isOn: $showEnglishTranslation)
+                }
             }
             .navigationTitle("Reading Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                initializeEnglishTranslationSetting()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {

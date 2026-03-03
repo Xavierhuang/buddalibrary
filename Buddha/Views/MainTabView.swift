@@ -10,31 +10,48 @@ import SwiftData
 
 struct MainTabView: View {
     @Environment(\.modelContext) private var modelContext
-    
+    @State private var dataLoaded = false
+
     var body: some View {
-        TabView {
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
+        Group {
+            if dataLoaded {
+                TabView {
+                    HomeView()
+                        .tabItem {
+                            Label("Home", systemImage: "house.fill")
+                        }
+
+                    LibraryView()
+                        .tabItem {
+                            Label("Library", systemImage: "book.fill")
+                        }
+
+                    NotesView()
+                        .tabItem {
+                            Label("Notes", systemImage: "note.text")
+                        }
+
+                    AudioView()
+                        .tabItem {
+                            Label("Audio", systemImage: "music.note")
+                        }
+
+                    SearchView()
+                        .tabItem {
+                            Label("Search", systemImage: "magnifyingglass")
+                        }
                 }
-            
-            LibraryView()
-                .tabItem {
-                    Label("Library", systemImage: "book.fill")
-                }
-            
-            NotesView()
-                .tabItem {
-                    Label("Notes", systemImage: "note.text")
-                }
-            
-            SearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
+            } else {
+                ProgressView("Loading...")
+            }
         }
         .onAppear {
-            DataService.loadSampleData(context: modelContext)
+            if !dataLoaded {
+                Task {
+                    DataService.loadSampleData(context: modelContext)
+                    dataLoaded = true
+                }
+            }
         }
     }
 }

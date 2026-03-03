@@ -17,6 +17,11 @@ struct LibraryView: View {
         Array(Set(texts.map { $0.category })).sorted()
     }
     
+    // Helper function to localize category names
+    private func localizedCategory(_ category: String) -> String {
+        return NSLocalizedString(category, comment: "")
+    }
+    
     var filteredTexts: [BuddhistText] {
         var result = texts
         
@@ -39,12 +44,12 @@ struct LibraryView: View {
                 if !categories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            CategoryButton(title: "All", isSelected: selectedCategory == nil) {
+                            CategoryButton(title: NSLocalizedString("All", comment: ""), isSelected: selectedCategory == nil) {
                                 selectedCategory = nil
                             }
                             
                             ForEach(categories, id: \.self) { category in
-                                CategoryButton(title: category, isSelected: selectedCategory == category) {
+                                CategoryButton(title: localizedCategory(category), isSelected: selectedCategory == category) {
                                     selectedCategory = category
                                 }
                             }
@@ -92,32 +97,48 @@ struct CategoryButton: View {
 
 struct LibraryRow: View {
     let text: BuddhistText
-    
+
     var body: some View {
         HStack(spacing: 15) {
-            Image(systemName: "book.closed.fill")
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 40)
-            
+            // Cover image or default icon
+            if let coverImageName = text.coverImageName, !coverImageName.isEmpty {
+                Image(coverImageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 60, height: 80)
+                    .cornerRadius(8)
+                    .clipped()
+                    .onAppear {
+                        print("📚 Loading cover: \(coverImageName) for \(text.title)")
+                    }
+            } else {
+                Image(systemName: "book.closed.fill")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+                    .frame(width: 60, height: 80)
+                    .onAppear {
+                        print("⚠️ No cover for: \(text.title), coverImageName: \(text.coverImageName ?? "nil")")
+                    }
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(text.title)
                     .font(.headline)
-                
+
                 if let author = text.author {
                     Text(author)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 if let textDescription = text.textDescription {
                     Text(textDescription)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
-                
-                Text(text.category)
+
+                Text(NSLocalizedString(text.category, comment: ""))
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -125,10 +146,10 @@ struct LibraryRow: View {
                     .foregroundColor(.blue)
                     .cornerRadius(8)
             }
-            
+
             Spacer()
-            
-            Text("\(text.chapters.count) chapters")
+
+            Text(String(format: NSLocalizedString("%d chapters", comment: ""), text.chapters.count))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -139,6 +160,16 @@ struct LibraryRow: View {
 struct TextDetailView: View {
     let text: BuddhistText
     @State private var selectedChapter: Chapter?
+    @State private var showPDF = false
+    
+    var isPDFBook: Bool {
+        text.title == "What the Buddha Taught" || text.title == "The Life of the Buddha" || text.title == "流浪者之歌 (Siddhartha)"
+    }
+
+    var pdfFileName: String {
+        // Return the exact filename without extension
+        return text.title
+    }
     
     var body: some View {
         List {
@@ -157,33 +188,61 @@ struct TextDetailView: View {
                     }
                     .font(.subheadline)
                 }
+                
+                if isPDFBook {
+                    Button(action: {
+                        showPDF = true
+                    }) {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Open PDF")
+                                    .font(.headline)
+                                Text("View the complete book")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
             } header: {
                 Text("About")
             }
             
-            Section {
-                ForEach(text.chapters, id: \.id) { chapter in
-                    NavigationLink(destination: ReadingView(textTitle: text.title, chapterNumber: chapter.number)) {
-                        HStack {
-                            Text("Chapter \(chapter.number)")
-                                .fontWeight(.medium)
-                            if !chapter.title.isEmpty {
-                                Text(": \(chapter.title)")
+            if !isPDFBook {
+                Section {
+                    ForEach(text.chapters, id: \.id) { chapter in
+                        NavigationLink(destination: ReadingView(textTitle: text.title, chapterNumber: chapter.number)) {
+                            HStack {
+                                Text(String(format: NSLocalizedString("Chapter %d", comment: ""), chapter.number))
+                                    .fontWeight(.medium)
+                                if !chapter.title.isEmpty {
+                                    Text(": \(chapter.title)")
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text(String(format: NSLocalizedString("%d verses", comment: ""), chapter.verses.count))
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
-                            Text("\(chapter.verses.count) verses")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
                         }
                     }
+                } header: {
+                    Text("Chapters")
                 }
-            } header: {
-                Text("Chapters")
             }
         }
         .navigationTitle(text.title)
         .navigationBarTitleDisplayMode(.large)
+        .sheet(isPresented: $showPDF) {
+            PDFReaderView(pdfName: pdfFileName)
+        }
     }
 }
 
