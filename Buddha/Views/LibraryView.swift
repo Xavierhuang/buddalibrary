@@ -89,7 +89,7 @@ struct CategoryButton: View {
                 .foregroundColor(isSelected ? .white : .primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color(.systemGray5))
+                .background(isSelected ? Color.purple : Color(.systemGray5))
                 .cornerRadius(20)
         }
     }
@@ -114,7 +114,7 @@ struct LibraryRow: View {
             } else {
                 Image(systemName: "book.closed.fill")
                     .font(.title2)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.purple)
                     .frame(width: 60, height: 80)
                     .onAppear {
                         print("⚠️ No cover for: \(text.title), coverImageName: \(text.coverImageName ?? "nil")")
@@ -142,8 +142,8 @@ struct LibraryRow: View {
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
+                    .background(Color.purple.opacity(0.1))
+                    .foregroundColor(.purple)
                     .cornerRadius(8)
             }
 
@@ -196,7 +196,7 @@ struct TextDetailView: View {
                         HStack {
                             Image(systemName: "doc.text.fill")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.purple)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Open PDF")
                                     .font(.headline)

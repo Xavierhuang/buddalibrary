@@ -25,7 +25,7 @@ struct HomeView: View {
                     // Quick Stats
                     HStack(spacing: 15) {
                         NavigationLink(destination: LibraryView()) {
-                            StatCard(title: NSLocalizedString("Texts", comment: ""), count: texts.count, icon: "book.fill", color: .blue)
+                            StatCard(title: NSLocalizedString("Texts", comment: ""), count: texts.count, icon: "book.fill", color: .purple)
                         }
                         .buttonStyle(PlainButtonStyle())
                         

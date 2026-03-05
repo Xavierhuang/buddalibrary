@@ -113,7 +113,7 @@ struct ReadingView: View {
                                     Text(String(format: NSLocalizedString("Chapter %d", comment: ""), prevChapter.number))
                                 }
                                 .font(.subheadline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.purple)
                                 .padding()
                                 .frame(maxWidth: .infinity)
                                 .background(Color(.systemGray6))
@@ -131,7 +131,7 @@ struct ReadingView: View {
                                     Image(systemName: "chevron.right")
                                 }
                                 .font(.subheadline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.purple)
                                 .padding()
                                 .frame(maxWidth: .infinity)
                                 .background(Color(.systemGray6))

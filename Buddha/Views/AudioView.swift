@@ -46,7 +46,7 @@ struct AudioTrackCard: View {
             HStack {
                 Image(systemName: "music.note")
                     .font(.title)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.purple)
                     .frame(width: 40)
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -56,7 +56,7 @@ struct AudioTrackCard: View {
                     if isCurrentTrack {
                         Text("Now Playing")
                             .font(.caption)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.purple)
                     }
                 }
                 
@@ -75,7 +75,7 @@ struct AudioTrackCard: View {
                     }) {
                         Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.title)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.purple)
                     }
                 } else {
                     Button(action: {
@@ -84,7 +84,7 @@ struct AudioTrackCard: View {
                     }) {
                         Image(systemName: "play.circle.fill")
                             .font(.title)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.purple)
                     }
                 }
             }
@@ -93,7 +93,7 @@ struct AudioTrackCard: View {
             if isCurrentTrack && audioPlayer.duration > 0 {
                 VStack(spacing: 8) {
                     ProgressView(value: audioPlayer.currentTime, total: audioPlayer.duration)
-                        .tint(.blue)
+                        .tint(.purple)
                     
                     HStack {
                         Text(formatTime(audioPlayer.currentTime))

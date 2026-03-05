@@ -20,8 +20,8 @@ struct SplashView: View {
                 // Background gradient
                 LinearGradient(
                     colors: [
-                        Color(red: 0.95, green: 0.95, blue: 0.97),
-                        Color(red: 0.98, green: 0.97, blue: 0.95)
+                        Color(red: 0.85, green: 0.80, blue: 0.95),
+                        Color(red: 0.75, green: 0.70, blue: 0.90)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -36,15 +36,15 @@ struct SplashView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.85, green: 0.75, blue: 0.55),
-                                        Color(red: 0.75, green: 0.65, blue: 0.45)
+                                        Color(red: 0.65, green: 0.50, blue: 0.85),
+                                        Color(red: 0.55, green: 0.40, blue: 0.75)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
                             .frame(width: 140, height: 140)
-                            .shadow(color: Color.black.opacity(0.15), radius: 25, x: 0, y: 12)
+                            .shadow(color: Color.purple.opacity(0.3), radius: 25, x: 0, y: 12)
                         
                         // Inner circle
                         Circle()
@@ -74,13 +74,13 @@ struct SplashView: View {
                     // App name
                     Text("Buddha")
                         .font(.system(size: 42, weight: .light, design: .serif))
-                        .foregroundColor(Color(red: 0.3, green: 0.25, blue: 0.2))
+                        .foregroundColor(Color(red: 0.35, green: 0.20, blue: 0.50))
                         .opacity(opacity)
                     
                     // Subtitle
                     Text("Wisdom for Daily Life")
                         .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(Color(red: 0.5, green: 0.45, blue: 0.4))
+                        .foregroundColor(Color(red: 0.50, green: 0.35, blue: 0.65))
                         .opacity(opacity)
                 }
             }

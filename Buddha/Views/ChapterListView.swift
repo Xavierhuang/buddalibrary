@@ -28,7 +28,7 @@ struct ChapterListView: View {
                             Spacer()
                             if chapter.number == currentChapterNumber {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.purple)
                             }
                         }
                     }
