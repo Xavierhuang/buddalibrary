@@ -1,0 +1,19 @@
+# Project Notes
+Created: 2026-04-10
+
+## TODO
+- Review app functionality
+- Test reading features
+- Check search implementation
+
+## Notes
+This is a sample text file created for the Buddha app project.
+
+## Features to Consider
+1. Offline reading capabilities
+2. Bookmark synchronization
+3. Reading progress tracking
+4. Multi-language support
+
+## Contact
+For any questions about this project, please refer to the source code documentation.

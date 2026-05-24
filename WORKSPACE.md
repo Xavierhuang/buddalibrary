@@ -25,8 +25,8 @@ Copy this file to `WORKSPACE.md` in your project root. LingCode loads it when us
 set -euo pipefail
 
 # ── LingCode Magic Deploy ─────────────────────────────────────────
-# Target:  root@45.55.39.39
-# Project: buddha (Python)
+# Target:  root@0.0.0.0
+# Project: buddha (Static Site)
 # Generated: $(date)
 # ─────────────────────────────────────────────────────────────────
 
@@ -38,52 +38,54 @@ if ! command -v sshpass &>/dev/null; then
 fi
 
 echo "[deploy] Step 1/5 — Verifying SSH connection..."
-sshpass -p 'Hhwj65377068Hhwj' ssh root@45.55.39.39 'echo "[deploy] SSH connection OK"'
+sshpass -p 'Hhwj65377068Hhwj' ssh root@0.0.0.0 'echo "[deploy] SSH connection OK"'
 
 echo "[deploy] Step 2/5 — Syncing project files..."
-sshpass -p 'Hhwj65377068Hhwj' ssh root@45.55.39.39 "mkdir -p /var/www/buddha"
-sshpass -p 'Hhwj65377068Hhwj' rsync -avz --delete --exclude '.git' --exclude 'node_modules' --exclude '.next' --exclude 'dist' --exclude 'build' --exclude '__pycache__' --exclude '.env' --exclude '*.log' "/Users/weijiahuang/Desktop/Buddha/" "root@45.55.39.39:/var/www/buddha/"
+sshpass -p 'Hhwj65377068Hhwj' ssh root@0.0.0.0 "mkdir -p /var/www/buddha"
+sshpass -p 'Hhwj65377068Hhwj' rsync -avz --delete --exclude '.git' --exclude 'node_modules' --exclude '.next' --exclude 'dist' --exclude 'build' --exclude '__pycache__' --exclude '.env' --exclude '*.log' "/Users/weijiahuang/Desktop/Buddha/" "root@0.0.0.0:/var/www/buddha/"
 
 echo "[deploy] Step 3/5 — Installing runtime dependencies on server..."
-sshpass -p 'Hhwj65377068Hhwj' ssh root@45.55.39.39 'bash -l -s' << 'REMOTE_SETUP'
+sshpass -p 'Hhwj65377068Hhwj' ssh root@0.0.0.0 'bash -l -s' << 'REMOTE_SETUP'
 set -euo pipefail
 cd /var/www/buddha
-# Install Python3 / pip if missing
-if ! command -v python3 &>/dev/null; then
-  echo "[deploy] Installing Python3..."
-  sudo apt-get update -qq && sudo apt-get install -y python3 python3-pip python3-venv
-fi
 if ! command -v nginx &>/dev/null; then
+  echo "[deploy] Installing nginx..."
   sudo apt-get update -qq && sudo apt-get install -y nginx
 fi
 REMOTE_SETUP
 
 echo "[deploy] Step 4/5 — Building project on server..."
-sshpass -p 'Hhwj65377068Hhwj' ssh root@45.55.39.39 'bash -l -s' << 'REMOTE_BUILD'
+sshpass -p 'Hhwj65377068Hhwj' ssh root@0.0.0.0 'bash -l -s' << 'REMOTE_BUILD'
 set -euo pipefail
 cd /var/www/buddha
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt --quiet
+echo '[deploy] Static site — no build step'
 REMOTE_BUILD
 
 echo "[deploy] Step 5/5 — Starting application..."
-sshpass -p 'Hhwj65377068Hhwj' ssh root@45.55.39.39 'bash -l -s' << 'REMOTE_START'
+sshpass -p 'Hhwj65377068Hhwj' ssh root@0.0.0.0 'bash -l -s' << 'REMOTE_START'
 set -euo pipefail
 cd /var/www/buddha
-source .venv/bin/activate
-# Use gunicorn if available, else uvicorn, else flask dev server
-if pip show gunicorn &>/dev/null; then
-  pkill -f gunicorn 2>/dev/null; nohup gunicorn -w 4 -b 0.0.0.0:5000 app:app &>/tmp/buddha.log &
-elif pip show uvicorn &>/dev/null; then
-  pkill -f uvicorn 2>/dev/null; nohup uvicorn main:app --host 0.0.0.0 --port 5000 &>/tmp/buddha.log &
-else
-  pkill -f "python3 app" 2>/dev/null; nohup python3 app.py &>/tmp/buddha.log &
+if [ ! -f /etc/nginx/sites-enabled/buddha ]; then
+  echo "[deploy] Configuring nginx to serve static files..."
+  sudo tee /etc/nginx/sites-available/buddha > /dev/null << 'NGINX'
+server {
+    listen 80;
+    server_name _;
+    root /var/www/buddha;
+    index index.html;
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+}
+NGINX
+  sudo ln -sf /etc/nginx/sites-available/buddha /etc/nginx/sites-enabled/buddha
+  sudo nginx -t 2>&1 && sudo systemctl reload nginx
 fi
+echo "[deploy] Static site served from /var/www/buddha"
 REMOTE_START
 
 echo ""
 echo "[deploy] ✓ Deployment complete!"
-echo "[deploy] App is running on: http://45.55.39.39"
+echo "[deploy] App is running on: http://0.0.0.0"
 - Auto-Detected: true
-- Last Configured: 2026-03-08T23:40:30Z
+- Last Configured: 2026-03-12T20:03:26Z
